@@ -72,40 +72,115 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-The script will automatically:
-1. Enable the required GCP service APIs (`run.googleapis.com`, `cloudbuild.googleapis.com`, `artifactregistry.googleapis.com`).
-2. Create an Artifact Registry Docker repository named `ce-sample-hr-vacation-repo`.
-3. Submit the codebase to Cloud Build to compile your container.
-4. Deploy the service to a managed Cloud Run instance and print the public link.
+By default, the application is deployed as a **secure single-region service** inside `us-central1`. To fulfill the organizational security policies:
+1. Ingress to the Cloud Run service is locked to load balancing only.
+2. An **External HTTP/HTTPS Application Load Balancer (GCLB)** and **Identity-Aware Proxy (IAP)** are configured by default to authenticate employees before they can access the frontend portal.
 
 ---
 
 ## 📐 Infrastructure as Code (IaC)
 
-A complete **Terraform** module is provided under the `terraform/` directory. This module outlines how to provision the actual private infrastructure topology:
+A complete **Terraform** module is provided under the `terraform/` directory. This module outlines how to provision the baseline secure topology:
 
 ```hcl
-# Read, review, or execute:
 cd terraform
 terraform init
 terraform plan
 ```
 
-This IaC module sets up the private VPC subnetwork, Serverless VPC Access connector, Private Service Connection peering, an isolated PostgreSQL instance with private IP, a Native Firestore instance, and Cloud Run services mapped to the VPC connector.
+This IaC module sets up the private VPC subnetwork, Serverless VPC Access connector, Private Service Connection peering, an isolated PostgreSQL instance, Native Firestore, and the **Global Load Balancer with Identity-Aware Proxy (IAP) enabled by default**, exposing access to the student's email (defined via `var.student_email`).
 
 ---
 
-## 🎓 Student Laboratory Exercises
+## 🎓 Coursework: Upgrading to Multi-Region Load Balancing
 
-Open the **Student Labs** tab inside the web portal to review details for three architect-level lab challenges:
+To support low-latency global transactions for subsidiaries in Europe and Asia, students must upgrade the baseline single-region configuration into a **highly available, multi-regional topology**. 
 
-### 🔬 Exercise 1: Relational Multi-Region SQL Replication
-* **Task**: Transition Cloud SQL from single-region to high availability with cross-region read replicas.
-* **Architecture**: Create an active master in `us-central1` and a regional replica in `europe-west1` via Terraform.
+Follow these step-by-step instructions to update your application code and IaC templates to be multi-regional:
 
-### 🔬 Exercise 2: Anycast Global Load Balancing
-* **Task**: Bridge international latency for European or Asian employees using a Global HTTPS Load Balancer.
-* **Architecture**: Configure serverless NEGs (Network Endpoint Groups) routing frontend requests to regional Cloud Run instances automatically based on geographic proximity.
+### Step 1: Declare a Second Regional Cloud Run Frontend
+In `terraform/main.tf`, declare a new regional Cloud Run frontend service in a second region (e.g., `europe-west1`):
+```hcl
+resource "google_cloud_run_v2_service" "frontend_europe" {
+  name     = "hr-vacation-frontend-europe"
+  location = "europe-west1"
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_AND_CLOUD_LOAD_BALANCING"
 
-### 🔬 Exercise 3: Syncing Firestore Multi-Region Active-Active Data
-* **Task**: Evaluate replication lag and conflict resolution models when migrating a Firestore database to European dual-region storage `eur3`.
+  template {
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.app_repo.repository_id}/frontend:latest"
+      ports {
+        container_port = 8080
+      }
+      env {
+        name  = "BACKEND_API_URL"
+        value = google_cloud_run_v2_service.backend_service.uri
+      }
+    }
+  }
+}
+```
+
+### Step 2: Create a European Serverless NEG
+Define a regional serverless Network Endpoint Group (NEG) targeting the new European Cloud Run frontend:
+```hcl
+resource "google_compute_region_network_endpoint_group" "serverless_neg_europe" {
+  name                  = "hr-vacation-neg-europe"
+  network_endpoint_type = "SERVERLESS"
+  region                = "europe-west1"
+  cloud_run {
+    service = google_cloud_run_v2_service.frontend_europe.name
+  }
+}
+```
+
+### Step 3: Register Both Regional NEGs to the IAP Backend Service
+Update the existing backend service (`google_compute_backend_service.backend_service`) to route traffic to both the US and Europe NEGs. GCLB will automatically direct clients to the nearest region using Anycast IP routing:
+```hcl
+resource "google_compute_backend_service" "backend_service" {
+  name                  = "hr-vacation-backend-service"
+  protocol              = "HTTP"
+  port_name             = "http"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  # Primary US Backend
+  backend {
+    group = google_compute_region_network_endpoint_group.serverless_neg.id
+  }
+
+  # Failover / Latency-Optimized Europe Backend
+  backend {
+    group = google_compute_region_network_endpoint_group.serverless_neg_europe.id
+  }
+
+  iap {
+    oauth2_client_id     = var.iap_client_id
+    oauth2_client_secret = var.iap_client_secret
+  }
+}
+```
+
+### Step 4: Configure Cross-Region SQL Replication
+To ensure European users experience low-latency read operations, set up a regional Cloud SQL read replica in `europe-west1`:
+```hcl
+resource "google_sql_database_instance" "replica_europe" {
+  name                 = "hr-vacation-sql-db-replica"
+  region               = "europe-west1"
+  database_version     = "POSTGRES_15"
+  master_instance_name = google_sql_database_instance.postgres.name
+
+  settings {
+    tier = "db-f1-micro"
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.vpc_network.id
+    }
+  }
+}
+```
+
+### Step 5: Verify the Multi-Regional Setup
+1. Apply the updated Terraform configuration (`terraform apply`).
+2. Verify that GCLB forwards traffic to both `us-central1` and `europe-west1` based on user location.
+3. Access the portal and inspect the simulated terminal logs. Confirm that Central IAP identity verification remains unified across all entry nodes while requests are routed locally!
+

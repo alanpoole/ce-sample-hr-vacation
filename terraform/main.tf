@@ -255,3 +255,12 @@ resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
   target                = google_compute_target_https_proxy.https_proxy.id
 }
 
+# Grant default Identity-Aware Proxy (IAP) access to the student
+resource "google_iap_web_backend_service_iam_member" "student_access" {
+  project             = var.project_id
+  web_backend_service = google_compute_backend_service.backend_service.name
+  role                = "roles/iap.httpsResourceAccessor"
+  member              = "user:${var.student_email}"
+}
+
+

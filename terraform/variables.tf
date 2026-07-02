@@ -30,3 +30,10 @@ variable "iap_client_secret" {
   sensitive   = true
 }
 
+variable "student_email" {
+  description = "The student's email address to grant access via Identity-Aware Proxy."
+  type        = string
+  default     = "alanpoole@google.com"
+}
+
+

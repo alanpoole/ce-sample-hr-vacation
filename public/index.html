@@ -364,15 +364,15 @@
             </div>
             <h3 class="lab-title">Challenge 2: Multi-Region Load Balancing & Anycast Routing</h3>
             <p class="lab-desc">
-              Currently, the frontend and backend are hardcoded to a single Cloud Run region. Submitters from Germany or Japan experience high network latency when routing traffic across the Atlantic. Integrate a **Global HTTPS Load Balancer** with Serverless NEGs (Network Endpoint Groups) to automatically distribute and resolve routes globally.
+              By default, the application is deployed as a secure single-region service with a Global HTTPS Load Balancer (GCLB) and Identity-Aware Proxy (IAP) in <code>us-central1</code>. To reduce network latency for European users, upgrade the baseline GCLB configuration by adding a second regional Cloud Run frontend in <code>europe-west1</code>, declaring a European Serverless Network Endpoint Group (NEG), and registering it as an active-active backend.
             </p>
-            <pre class="lab-code"><code># Sample Serverless NEG mapping
-resource "google_compute_region_network_endpoint_group" "neg_us" {
-  name                  = "neg-us-frontend"
+            <pre class="lab-code"><code># Add a second regional NEG for European users
+resource "google_compute_region_network_endpoint_group" "serverless_neg_europe" {
+  name                  = "hr-vacation-neg-europe"
   network_endpoint_type = "SERVERLESS"
-  region                = "us-central1"
+  region                = "europe-west1"
   cloud_run {
-    service = "hr-frontend"
+    service = "hr-vacation-frontend-europe"
   }
 }</code></pre>
           </div>
