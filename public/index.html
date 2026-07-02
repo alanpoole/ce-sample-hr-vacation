@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCP HR Subsystem - Classroom Vacation Simulator</title>
+  <meta name="description" content="An interactive classroom simulation of a Google Cloud Platform vacation HR request subsystem, showing Cloud Run, Cloud SQL, Firestore, and Private VPC connections in action.">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Premium Header -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">
+        <!-- Calendar Check SVG -->
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm-9-3l-3-3 1.41-1.41L10 14.17l5.59-5.59L17 10l-7 7z"/></svg>
+      </div>
+      <div>
+        <h1 class="logo-title">GCP HR Subsystem</h1>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">Vacation Request Portal</div>
+      </div>
+      <span class="logo-badge">LAB ENVIRONMENT</span>
+    </div>
+
+    <!-- Interactive Navigation Tab Bar -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" id="tab-simulate">Simulation Workspace</button>
+      <button class="tab-btn" id="tab-database">DB Inspector</button>
+      <button class="tab-btn" id="tab-labs">Student Labs</button>
+    </div>
+
+    <!-- Reset Simulation Command -->
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <!-- Notification Center -->
+      <div class="notification-bell" id="notif-center" title="Notifications">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+        <span class="notification-badge" id="notif-badge" style="display: none;">0</span>
+      </div>
+      <button class="btn btn-secondary" id="btn-reset" style="padding: 0.5rem 1rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.07 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        Reset Simulation
+      </button>
+    </div>
+  </header>
+
+  <!-- App Wrapper Grid -->
+  <div class="app-container">
+
+    <!-- Column 1: Sidebar controls -->
+    <aside class="sidebar">
+
+      <!-- Profile Selector -->
+      <div class="glass-card">
+        <h2 class="card-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          Who Am I? (Role Selector)
+        </h2>
+        <div class="form-group">
+          <label for="select-employee">Select Active Student Profile</label>
+          <select id="select-employee" class="custom-select"></select>
+        </div>
+
+        <!-- Render active profile badge & balances -->
+        <div class="profile-panel" id="active-profile-card">
+          <div class="profile-meta">
+            <div class="profile-avatar" id="profile-avatar">E</div>
+            <div class="profile-info">
+              <div class="profile-name" id="profile-name">Select Profile</div>
+              <div class="profile-role" id="profile-role">-</div>
+            </div>
+          </div>
+          <div class="profile-badges" id="profile-badges">
+            <!-- Badges updated via app.js -->
+          </div>
+          <div class="balance-grid">
+            <div class="balance-box">
+              <div class="balance-val" id="bal-accrued">0</div>
+              <div class="balance-lbl">Accrued</div>
+            </div>
+            <div class="balance-box">
+              <div class="balance-val" id="bal-rollover">0</div>
+              <div class="balance-lbl">Rollover</div>
+            </div>
+            <div class="balance-box">
+              <div class="balance-val" id="bal-used">0</div>
+              <div class="balance-lbl">Used</div>
+            </div>
+            <div class="balance-box" style="background: hsla(150, 84%, 40%, 0.08); border-color: hsla(150, 84%, 40%, 0.2);">
+              <div class="balance-val" id="bal-net" style="color: var(--success);">0</div>
+              <div class="balance-lbl">Net Available</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Request Form -->
+      <div class="glass-card">
+        <h2 class="card-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Request Time Off
+        </h2>
+        <form id="form-request">
+          <div class="form-group">
+            <label for="input-start">Start Date</label>
+            <input type="date" id="input-start" class="custom-input" required>
+          </div>
+          <div class="form-group">
+            <label for="input-end">End Date</label>
+            <input type="date" id="input-end" class="custom-input" required>
+          </div>
+          <div class="form-group">
+            <label for="input-reason">Purpose / Reason</label>
+            <textarea id="input-reason" class="custom-textarea" rows="2" placeholder="Describe context for your audit..." required></textarea>
+          </div>
+
+          <!-- Live Rule Warn Pane -->
+          <div id="rule-warn-pane"></div>
+
+          <button type="submit" class="btn" id="btn-submit-req">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            Submit to Subsystem
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- Column 2: Tabbed panels -->
+    <main class="main-content">
+
+      <!-- PANEL 1: SIMULATION WORKSPACE -->
+      <section class="tab-panel active" id="panel-simulate">
+        
+        <!-- Live Cloud Visualizer Grid -->
+        <div class="viz-grid">
+          
+          <!-- Cloud Topology SVG Panel -->
+          <div class="glass-card" style="padding: 1rem; display: flex; flex-direction: column;">
+            <h2 class="card-title" style="margin-bottom: 0.5rem; font-size: 1rem;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
+              Google Cloud Live Traffic Visualizer
+            </h2>
+            <div class="viz-diagram" id="diagram-container">
+              <!-- SVG DIAGRAM -->
+              <svg class="diagram-svg" viewBox="0 0 600 400">
+                <!-- Gradients -->
+                <defs>
+                  <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="hsl(263, 90%, 51%)" />
+                    <stop offset="100%" stop-color="hsl(280, 85%, 60%)" />
+                  </linearGradient>
+                </defs>
+
+                <!-- Private VPC boundary box -->
+                <rect x="15" y="100" width="570" height="280" rx="15" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" stroke-dasharray="6,4" />
+                <text x="30" y="125" fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)" letter-spacing="1">PRIVATE VPC BOUNDARY</text>
+
+                <!-- Interconnect / Communication Pathways -->
+                <!-- Frontend to Backend -->
+                <path id="path-fe-be" d="M 120 75 Q 180 180 300 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <!-- Backend to SQL -->
+                <path id="path-be-sql" d="M 300 180 Q 300 280 150 280" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <!-- Backend to Firestore -->
+                <path id="path-be-fs" d="M 300 180 Q 300 280 450 280" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+
+                <!-- 1. Node: User Browser (External) -->
+                <g class="svg-node" transform="translate(120, 55)" id="node-fe">
+                  <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
+                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">Browser / FE</text>
+                  <text x="0" y="15" fill="var(--info)" font-size="8" text-anchor="middle">Cloud Run (FE)</text>
+                </g>
+
+                <!-- 2. Node: Backend Core API -->
+                <g class="svg-node" transform="translate(300, 180)" id="node-be">
+                  <rect x="-65" y="-25" width="130" height="50" rx="8" fill="url(#cloudGrad)" stroke="var(--border-focus)" stroke-width="1.5" />
+                  <text x="0" y="2" fill="white" font-size="12" font-weight="700" text-anchor="middle">Backend Core</text>
+                  <text x="0" y="15" fill="hsla(0, 0%, 100%, 0.8)" font-size="8" font-family="var(--font-mono)" text-anchor="middle">Rules Engine (BE)</text>
+                </g>
+
+                <!-- 3. Node: Cloud SQL Database -->
+                <g class="svg-node" transform="translate(150, 280)" id="node-sql">
+                  <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
+                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">Relational (SQL)</text>
+                  <text x="0" y="15" fill="var(--primary)" font-size="8" text-anchor="middle">Cloud SQL</text>
+                </g>
+
+                <!-- 4. Node: Firestore NoSQL -->
+                <g class="svg-node" transform="translate(450, 280)" id="node-fs">
+                  <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
+                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">NoSQL (Docs)</text>
+                  <text x="0" y="15" fill="var(--warning)" font-size="8" text-anchor="middle">Firestore</text>
+                </g>
+
+                <!-- Animated Packets -->
+                <circle id="packet-fe-be-c" class="packet" />
+                <circle id="packet-be-sql-c" class="packet" />
+                <circle id="packet-be-fs-c" class="packet" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Live Terminal Logger Pane -->
+          <div class="terminal-card">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <div style="font-weight: 500; letter-spacing: 0.05em; font-size: 0.75rem;">DATABASE TRANSACTION LOGS</div>
+              <div id="log-counter" style="color: var(--text-muted); font-size: 0.7rem;">0 logs</div>
+            </div>
+            <div class="terminal-logs" id="terminal-stream">
+              <!-- Logs updated via app.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Approval Workflows Section -->
+        <div class="glass-card">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            Subsystem Workflow State Queue (/workflows)
+          </h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Req ID</th>
+                  <th>Employee</th>
+                  <th>Sector</th>
+                  <th>Dates Requested</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                  <th>Next Step</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="table-workflows-body">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PANEL 2: DATABASE INSPECTOR -->
+      <section class="tab-panel" id="panel-database">
+        <div class="glass-card">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            Primary Databases Inspection Consoles
+          </h2>
+          
+          <div class="db-tabs">
+            <button class="db-tab-btn active" id="db-tab-sql">Cloud SQL (Relational Tables)</button>
+            <button class="db-tab-btn" id="db-tab-fs">Firestore NoSQL Documents</button>
+          </div>
+
+          <div id="db-sql-pane">
+            <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+              Tables: <code style="color: var(--primary);">employees</code>, <code style="color: var(--primary);">accrual_balances</code>, <code style="color: var(--primary);">departments</code>
+            </div>
+            <div class="db-console" id="sql-console-view">
+              <!-- Render SQL data dynamically -->
+            </div>
+          </div>
+
+          <div id="db-fs-pane" style="display: none;">
+            <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+              Collections: <code style="color: var(--warning);">/workflows/{requestId}</code>, <code style="color: var(--warning);">/notifications/{notificationId}</code>
+            </div>
+            <div class="db-console" id="fs-console-view">
+              <!-- Render JSON Document hierarchies dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PANEL 3: STUDENT LABS -->
+      <section class="tab-panel" id="panel-labs">
+        
+        <div class="glass-card">
+          <h2 class="card-title" style="color: var(--border-focus);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5.89 12.55L12 15.88l6.11-3.33c.8-.43 1.39-1.11 1.39-2V10l-7.5 4.09L4.5 10v.55c0 .89.59 1.57 1.39 2z"/></svg>
+            Student Laboratory Handouts & Challenges
+          </h2>
+          <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">
+            Welcome to the Time-Off Subsystem Lab! In this scenario, you are tasked with upgrading this baseline application from its single-region isolation into a globally available, fault-tolerant infrastructure pattern. Use these challenges to practice drafting production-ready cloud components.
+          </p>
+
+          <!-- LAB 1 -->
+          <div class="glass-card lab-card">
+            <div class="lab-meta">
+              <span class="lab-badge lab-easy">GCP ARCHITECT</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 20 mins</span>
+            </div>
+            <h3 class="lab-title">Challenge 1: Design Multi-Region Relational Failover</h3>
+            <p class="lab-desc">
+              The current database (Cloud SQL) runs as a standalone, single-region instance in <code>us-central1</code> with no replication. If the entire US-Central datacenter encounters a catastrophic outage, the HR portal is dead. Upgrade your architecture by configuring high availability (HA) and cross-region replica configurations in Terraform.
+            </p>
+            <div class="form-group">
+              <label>Review target IaC architecture upgrade template</label>
+              <pre class="lab-code"><code>resource "google_sql_database_instance" "replica" {
+  name                 = "hr-sql-replica-europe"
+  region               = "europe-west1"
+  database_version     = "POSTGRES_15"
+  master_instance_name = google_sql_database_instance.primary.name
+
+  settings {
+    tier = "db-f1-micro"
+    backup_configuration {
+      binary_log_enabled = true
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+
+          <!-- LAB 2 -->
+          <div class="glass-card lab-card">
+            <div class="lab-meta">
+              <span class="lab-badge lab-medium">NETWORK DEV</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 30 mins</span>
+            </div>
+            <h3 class="lab-title">Challenge 2: Multi-Region Load Balancing & Anycast Routing</h3>
+            <p class="lab-desc">
+              Currently, the frontend and backend are hardcoded to a single Cloud Run region. Submitters from Germany or Japan experience high network latency when routing traffic across the Atlantic. Integrate a **Global HTTPS Load Balancer** with Serverless NEGs (Network Endpoint Groups) to automatically distribute and resolve routes globally.
+            </p>
+            <pre class="lab-code"><code># Sample Serverless NEG mapping
+resource "google_compute_region_network_endpoint_group" "neg_us" {
+  name                  = "neg-us-frontend"
+  network_endpoint_type = "SERVERLESS"
+  region                = "us-central1"
+  cloud_run {
+    service = "hr-frontend"
+  }
+}</code></pre>
+          </div>
+
+          <!-- LAB 3 -->
+          <div class="glass-card lab-card">
+            <div class="lab-meta">
+              <span class="lab-badge lab-hard">DEVOPS ENGINEER</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 45 mins</span>
+            </div>
+            <h3 class="lab-title">Challenge 3: Active-Active Workflow Synced Firestore</h3>
+            <p class="lab-desc">
+              Firestore has multi-region options that run on an active-active model (replicating records inside US or Europe dual-regions). Explore changing the Firestore database resource from <code>nam5</code> (US Multi-region) to <code>eur3</code> (Europe Multi-region) inside your Terraform module and document how replication lag impacts live locking rules.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- Notification & Popup Container -->
+  <div class="alert-popup" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
