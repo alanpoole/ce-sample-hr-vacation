@@ -15,3 +15,18 @@ variable "zone" {
   type        = string
   default     = "us-central1-a"
 }
+
+variable "iap_client_id" {
+  description = "The OAuth Client ID for Identity-Aware Proxy."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "iap_client_secret" {
+  description = "The OAuth Client Secret for Identity-Aware Proxy."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+

@@ -106,6 +106,31 @@ function resetDatabase() {
 // Perform initial boot DB reset
 resetDatabase();
 
+// Helper to log GCLB and IAP verification on incoming API requests
+function logGCLBAndIAP(req, email) {
+  logDBAction('gclb', `GCLB: Intercepted ${req.method} request to ${req.path}. Client IP: 198.51.100.42. Region: us-central1.`);
+  logDBAction('iap', `IAP: Extracting X-Goog-IAP-JWT-Assertion header...`);
+  logDBAction('iap', `IAP: Cryptographic signature verified against Google public keys (https://www.gstatic.com/iap/verify/public_key)`);
+  logDBAction('iap', `IAP: Authenticated Identity: ${email}. Access GRANTED.`);
+}
+
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/') && !req.url.startsWith('/api/state') && req.url !== '/api/reset') {
+    let email = 'anonymous@untrusted.net';
+    if (req.body && req.body.employee_id) {
+      const emp = employees.find(e => e.id === req.body.employee_id);
+      if (emp) email = emp.email;
+    } else if (req.body && req.body.actor_id) {
+      const emp = employees.find(e => e.id === req.body.actor_id);
+      if (emp) email = emp.email;
+    } else {
+      email = 'student@gcp-lab.internal';
+    }
+    logGCLBAndIAP(req, email);
+  }
+  next();
+});
+
 // Helper to log DB events
 function logDBAction(type, message) {
   dbLogs.unshift({

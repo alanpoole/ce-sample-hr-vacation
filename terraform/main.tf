@@ -134,6 +134,7 @@ resource "google_cloud_run_v2_service" "backend_service" {
 resource "google_cloud_run_v2_service" "frontend_service" {
   name     = "hr-vacation-frontend"
   location = var.region
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_AND_CLOUD_LOAD_BALANCING"
 
   template {
     containers {
@@ -149,10 +150,108 @@ resource "google_cloud_run_v2_service" "frontend_service" {
   }
 }
 
-# Allow Unauthenticated public traffic for the Frontend UI only
+# Allow IAM invocation for GCLB / Authenticated proxy requests
 resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
   service  = google_cloud_run_v2_service.frontend_service.name
   location = google_cloud_run_v2_service.frontend_service.location
-  role     = "roles/run.viewer"
+  role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# -------------------------------------------------------------
+# 5. GLOBAL EXTERNAL LOAD BALANCER (GCLB) WITH IAP
+# -------------------------------------------------------------
+
+# Serverless NEG (Network Endpoint Group) targeting the Cloud Run Frontend
+resource "google_compute_region_network_endpoint_group" "serverless_neg" {
+  name                  = "hr-vacation-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+  cloud_run {
+    service = google_cloud_run_v2_service.frontend_service.name
+  }
+}
+
+# Backend Service for GCLB with IAP enabled
+resource "google_compute_backend_service" "backend_service" {
+  name                  = "hr-vacation-backend-service"
+  protocol              = "HTTP"
+  port_name             = "http"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.serverless_neg.id
+  }
+
+  iap {
+    oauth2_client_id     = var.iap_client_id
+    oauth2_client_secret = var.iap_client_secret
+  }
+}
+
+# Global URL Map mapping GCLB incoming paths to the serverless backend
+resource "google_compute_url_map" "url_map" {
+  name            = "hr-vacation-url-map"
+  default_service = google_compute_backend_service.backend_service.id
+}
+
+# Target HTTP Proxy for plaintext dev validation
+resource "google_compute_target_http_proxy" "http_proxy" {
+  name    = "hr-vacation-http-proxy"
+  url_map = google_compute_url_map.url_map.id
+}
+
+# Global HTTP Forwarding Rule
+resource "google_compute_global_forwarding_rule" "http_forwarding_rule" {
+  name                  = "hr-vacation-http-forwarding-rule"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.http_proxy.id
+}
+
+# Cryptographic resources for Load Balancer SSL Termination
+resource "tls_private_key" "key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_self_signed_cert" "cert" {
+  private_key_pem = tls_private_key.key.private_key_pem
+
+  subject {
+    common_name  = "hr-vacation.gcp-lab.internal"
+    organization = "Google Cloud Lab Classroom"
+  }
+
+  validity_period_hours = 8760 # 1 year
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+}
+
+resource "google_compute_ssl_certificate" "self_signed" {
+  name        = "hr-vacation-self-signed-cert"
+  private_key = tls_private_key.key.private_key_pem
+  certificate = tls_self_signed_cert.cert.cert_pem
+}
+
+# Target HTTPS Proxy for SSL termination at GCLB
+resource "google_compute_target_https_proxy" "https_proxy" {
+  name             = "hr-vacation-https-proxy"
+  url_map          = google_compute_url_map.url_map.id
+  ssl_certificates = [google_compute_ssl_certificate.self_signed.id]
+}
+
+# Global HTTPS Forwarding Rule
+resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
+  name                  = "hr-vacation-https-forwarding-rule"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "443"
+  target                = google_compute_target_https_proxy.https_proxy.id
+}
+

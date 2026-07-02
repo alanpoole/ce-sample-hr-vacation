@@ -149,6 +149,14 @@
                     <stop offset="0%" stop-color="hsl(263, 90%, 51%)" />
                     <stop offset="100%" stop-color="hsl(280, 85%, 60%)" />
                   </linearGradient>
+                  <linearGradient id="gclbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="hsl(200, 100%, 40%)" />
+                    <stop offset="100%" stop-color="hsl(215, 95%, 55%)" />
+                  </linearGradient>
+                  <linearGradient id="iapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="hsl(38, 95%, 45%)" />
+                    <stop offset="100%" stop-color="hsl(48, 100%, 55%)" />
+                  </linearGradient>
                 </defs>
 
                 <!-- Private VPC boundary box -->
@@ -156,42 +164,73 @@
                 <text x="30" y="125" fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)" letter-spacing="1">PRIVATE VPC BOUNDARY</text>
 
                 <!-- Interconnect / Communication Pathways -->
+                <!-- Browser to GCLB -->
+                <path id="path-browser-gclb" d="M 60 55 L 195 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <!-- GCLB to IAP -->
+                <path id="path-gclb-iap" d="M 195 55 L 345 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <!-- IAP to Frontend -->
+                <path id="path-iap-fe" d="M 345 55 L 495 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
                 <!-- Frontend to Backend -->
-                <path id="path-fe-be" d="M 120 75 Q 180 180 300 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <path id="path-fe-be" d="M 495 55 Q 430 180 300 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
                 <!-- Backend to SQL -->
-                <path id="path-be-sql" d="M 300 180 Q 300 280 150 280" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <path id="path-be-sql" d="M 300 180 Q 300 300 150 300" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
                 <!-- Backend to Firestore -->
-                <path id="path-be-fs" d="M 300 180 Q 300 280 450 280" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <path id="path-be-fs" d="M 300 180 Q 300 300 450 300" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
 
                 <!-- 1. Node: User Browser (External) -->
-                <g class="svg-node" transform="translate(120, 55)" id="node-fe">
-                  <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
-                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">Browser / FE</text>
-                  <text x="0" y="15" fill="var(--info)" font-size="8" text-anchor="middle">Cloud Run (FE)</text>
+                <g class="svg-node" transform="translate(60, 55)" id="node-browser">
+                  <rect x="-40" y="-20" width="80" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
+                  <text x="0" y="4" fill="var(--text-primary)" font-size="10" font-weight="600" text-anchor="middle">Browser</text>
+                  <text x="0" y="15" fill="var(--text-muted)" font-size="7" text-anchor="middle">Client App</text>
                 </g>
 
-                <!-- 2. Node: Backend Core API -->
+                <!-- 2. Node: Global Load Balancer (GCLB) -->
+                <g class="svg-node" transform="translate(195, 55)" id="node-gclb">
+                  <rect x="-50" y="-20" width="100" height="40" rx="6" fill="url(#gclbGrad)" stroke="hsl(200, 100%, 50%)" stroke-width="1.5" />
+                  <text x="0" y="2" fill="white" font-size="10" font-weight="700" text-anchor="middle">GCLB</text>
+                  <text x="0" y="13" fill="hsla(0, 0%, 100%, 0.9)" font-size="7.5" font-family="var(--font-sans)" text-anchor="middle">Global Balancer</text>
+                </g>
+
+                <!-- 3. Node: Identity-Aware Proxy (IAP) -->
+                <g class="svg-node" transform="translate(345, 55)" id="node-iap">
+                  <rect x="-45" y="-20" width="90" height="40" rx="6" fill="url(#iapGrad)" stroke="hsl(45, 100%, 50%)" stroke-width="1.5" />
+                  <text x="0" y="2" fill="white" font-size="10" font-weight="700" text-anchor="middle">IAP Proxy</text>
+                  <text x="0" y="13" fill="hsla(0, 0%, 100%, 0.9)" font-size="7.5" font-family="var(--font-sans)" text-anchor="middle">Identity Gate</text>
+                </g>
+
+                <!-- 4. Node: Frontend Service (Cloud Run - Ingress Locked) -->
+                <g class="svg-node" transform="translate(495, 55)" id="node-fe">
+                  <rect x="-55" y="-20" width="110" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-focus)" stroke-width="1" />
+                  <text x="0" y="-2" fill="var(--text-primary)" font-size="10" font-weight="600" text-anchor="middle">Frontend</text>
+                  <text x="0" y="8" fill="var(--info)" font-size="7.5" text-anchor="middle">Cloud Run (FE)</text>
+                  <text x="0" y="17" fill="var(--danger)" font-size="6.5" font-weight="700" font-family="var(--font-mono)" text-anchor="middle">[INGRESS LOCKED]</text>
+                </g>
+
+                <!-- 5. Node: Backend Core API -->
                 <g class="svg-node" transform="translate(300, 180)" id="node-be">
                   <rect x="-65" y="-25" width="130" height="50" rx="8" fill="url(#cloudGrad)" stroke="var(--border-focus)" stroke-width="1.5" />
                   <text x="0" y="2" fill="white" font-size="12" font-weight="700" text-anchor="middle">Backend Core</text>
                   <text x="0" y="15" fill="hsla(0, 0%, 100%, 0.8)" font-size="8" font-family="var(--font-mono)" text-anchor="middle">Rules Engine (BE)</text>
                 </g>
 
-                <!-- 3. Node: Cloud SQL Database -->
-                <g class="svg-node" transform="translate(150, 280)" id="node-sql">
+                <!-- 6. Node: Cloud SQL Database -->
+                <g class="svg-node" transform="translate(150, 300)" id="node-sql">
                   <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
                   <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">Relational (SQL)</text>
                   <text x="0" y="15" fill="var(--primary)" font-size="8" text-anchor="middle">Cloud SQL</text>
                 </g>
 
-                <!-- 4. Node: Firestore NoSQL -->
-                <g class="svg-node" transform="translate(450, 280)" id="node-fs">
+                <!-- 7. Node: Firestore NoSQL -->
+                <g class="svg-node" transform="translate(450, 300)" id="node-fs">
                   <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
                   <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">NoSQL (Docs)</text>
                   <text x="0" y="15" fill="var(--warning)" font-size="8" text-anchor="middle">Firestore</text>
                 </g>
 
                 <!-- Animated Packets -->
+                <circle id="packet-browser-gclb-c" class="packet" />
+                <circle id="packet-gclb-iap-c" class="packet" />
+                <circle id="packet-iap-fe-c" class="packet" />
                 <circle id="packet-fe-be-c" class="packet" />
                 <circle id="packet-be-sql-c" class="packet" />
                 <circle id="packet-be-fs-c" class="packet" />
@@ -349,6 +388,31 @@ resource "google_compute_region_network_endpoint_group" "neg_us" {
               Firestore has multi-region options that run on an active-active model (replicating records inside US or Europe dual-regions). Explore changing the Firestore database resource from <code>nam5</code> (US Multi-region) to <code>eur3</code> (Europe Multi-region) inside your Terraform module and document how replication lag impacts live locking rules.
             </p>
           </div>
+
+          <!-- LAB 4 -->
+          <div class="glass-card lab-card" style="border-left-color: hsl(45, 100%, 50%);">
+            <div class="lab-meta">
+              <span class="lab-badge" style="background: hsl(45, 100%, 15%); color: hsl(45, 100%, 60%);">SECURITY ENGINEER</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 25 mins</span>
+            </div>
+            <h3 class="lab-title">Challenge 4: Decipher and Validate IAP JWT Header</h3>
+            <p class="lab-desc">
+              Identity-Aware Proxy secures your ingress but how does your app prevent spoofing if someone accesses the local subnet? You MUST verify the <code>X-Goog-IAP-JWT-Assertion</code> header cryptographically in Node.js. Use Google's public certificates endpoint to verify the JWT signature.
+            </p>
+            <pre class="lab-code"><code>// Node.js IAP JWT Verification snippet
+const {OAuth2Client} = require('google-auth-library');
+const oAuth2Client = new OAuth2Client();
+
+async function verifyIAPToken(iapToken, audience) {
+  const ticket = await oAuth2Client.getIapPubKey(iapToken);
+  const key = ticket.pubkey;
+  const payload = await oAuth2Client.verifySignedJwtWithKey(
+    iapToken, key, audience, ['https://cloud.google.com/iap']
+  );
+  return payload;
+}</code></pre>
+          </div>
+
 
         </div>
       </section>
