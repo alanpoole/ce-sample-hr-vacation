@@ -5,8 +5,8 @@ FROM node:20-slim
 WORKDIR /usr/src/app
 
 # Copy package files and install production dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+COPY package.json ./
+RUN npm install --only=production
 
 # Copy application source code
 COPY . .
