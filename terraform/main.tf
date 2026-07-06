@@ -102,7 +102,6 @@ resource "google_firestore_database" "firestore" {
 resource "google_artifact_registry_repository" "app_repo" {
   repository_id = "ce-sample-hr-vacation-repo"
   format        = "DOCKER"
-  region        = var.region
 }
 
 # Cloud Run (Backend Service)
@@ -134,7 +133,7 @@ resource "google_cloud_run_v2_service" "backend_service" {
 resource "google_cloud_run_v2_service" "frontend_service" {
   name     = "hr-vacation-frontend"
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_AND_CLOUD_LOAD_BALANCING"
+  ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
     containers {
@@ -152,7 +151,7 @@ resource "google_cloud_run_v2_service" "frontend_service" {
 
 # Allow IAM invocation for GCLB / Authenticated proxy requests
 resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
-  service  = google_cloud_run_v2_service.frontend_service.name
+  name     = google_cloud_run_v2_service.frontend_service.name
   location = google_cloud_run_v2_service.frontend_service.location
   role     = "roles/run.invoker"
   member   = "allUsers"
