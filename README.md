@@ -64,10 +64,29 @@ You can spin up this application locally using standard Node.js or Docker.
 
 ## ☁️ Deploying to Google Cloud
 
-The project includes an automation script (`deploy.sh`) to build and host this service on your own GCP environment.
+To deploy this application to your active Google Cloud Platform (GCP) project, you must follow the steps below in order.
 
-To deploy the application to your active GCP project, run the following:
+### Step 1: Enable Required GCP Services
+Before running Terraform, ensure that the necessary APIs are enabled in your active GCP project:
 ```bash
+gcloud services enable compute.googleapis.com deploymentmanager.googleapis.com vpcaccess.googleapis.com servicenetworking.googleapis.com
+```
+
+### Step 2: Provision Infrastructure with Terraform (IaC)
+A complete **Terraform** module is provided under the `terraform/` directory. This module outlines how to provision the baseline secure topology (private VPC subnetwork, Serverless VPC Access connector, Private Service Connection peering, an isolated PostgreSQL instance, Native Firestore, and the Global Load Balancer with Identity-Aware Proxy (IAP) enabled by default, exposing access to the student's email defined via `var.student_email`).
+
+You **must deploy Terraform before deploying the Cloud Run application** with `deploy.sh`. Initialize and apply the Terraform configuration:
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+### Step 3: Deploy the Cloud Run Application
+Once your infrastructure has been successfully provisioned by Terraform, return to the root directory and use the included automation script (`deploy.sh`) to build and host the Cloud Run service:
+```bash
+cd ..
 chmod +x deploy.sh
 ./deploy.sh
 ```
@@ -75,20 +94,6 @@ chmod +x deploy.sh
 By default, the application is deployed as a **secure single-region service** inside `us-central1`. To fulfill the organizational security policies:
 1. Ingress to the Cloud Run service is locked to load balancing only.
 2. An **External HTTP/HTTPS Application Load Balancer (GCLB)** and **Identity-Aware Proxy (IAP)** are configured by default to authenticate employees before they can access the frontend portal.
-
----
-
-## 📐 Infrastructure as Code (IaC)
-
-A complete **Terraform** module is provided under the `terraform/` directory. This module outlines how to provision the baseline secure topology:
-
-```hcl
-cd terraform
-terraform init
-terraform plan
-```
-
-This IaC module sets up the private VPC subnetwork, Serverless VPC Access connector, Private Service Connection peering, an isolated PostgreSQL instance, Native Firestore, and the **Global Load Balancer with Identity-Aware Proxy (IAP) enabled by default**, exposing access to the student's email (defined via `var.student_email`).
 
 ---
 
