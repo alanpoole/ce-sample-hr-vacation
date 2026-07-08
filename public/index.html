@@ -314,23 +314,23 @@
               <span class="lab-badge lab-easy">GCP ARCHITECT</span>
               <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 20 mins</span>
             </div>
-            <h3 class="lab-title">Challenge 1: Design Multi-Region Relational Failover</h3>
+            <h3 class="lab-title">Challenge 1: Scale Reads Locally with AlloyDB Read Pool</h3>
             <p class="lab-desc">
-              The current database (Cloud SQL) runs as a standalone, single-region instance in <code>us-central1</code> with no replication. If the entire US-Central datacenter encounters a catastrophic outage, the HR portal is dead. Upgrade your architecture by configuring high availability (HA) and cross-region replica configurations in Terraform.
+              The initial AlloyDB deployment starts with a single primary instance inside <code>us-central1</code> to minimize dev costs. As user traffic scales up across international subsidiaries, upgrade your primary cluster by adding a stateless, high-performance Read Pool instance in the primary region using Terraform. This enables shared-storage local read scaling with zero data copy latency.
             </p>
             <div class="form-group">
               <label>Review target IaC architecture upgrade template</label>
-              <pre class="lab-code"><code>resource "google_sql_database_instance" "replica" {
-  name                 = "hr-sql-replica-europe"
-  region               = "europe-west1"
-  database_version     = "POSTGRES_15"
-  master_instance_name = google_sql_database_instance.primary.name
+              <pre class="lab-code"><code>resource "google_alloydb_instance" "read_pool" {
+  cluster       = google_alloydb_cluster.primary.name
+  instance_id   = "hr-vacation-read-pool"
+  instance_type = "READ_POOL"
 
-  settings {
-    tier = "db-f1-micro"
-    backup_configuration {
-      binary_log_enabled = true
-    }
+  read_pool_config {
+    node_count = 1
+  }
+
+  machine_config {
+    cpu_count = 2
   }
 }</code></pre>
             </div>

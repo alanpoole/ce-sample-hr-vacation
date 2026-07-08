@@ -42,7 +42,7 @@ resource "google_vpc_access_connector" "vpc_connector" {
   network       = google_compute_network.vpc_network.name
 }
 
-# Private Service Networking (For Private Cloud SQL communication)
+# Private Service Networking (For Private AlloyDB communication)
 resource "google_compute_global_address" "private_ip_alloc" {
   name          = "private-ip-alloc-sql"
   purpose       = "VPC_PEERING"

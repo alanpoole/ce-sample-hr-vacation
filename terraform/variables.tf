@@ -11,7 +11,7 @@ variable "region" {
 }
 
 variable "zone" {
-  description = "The primary zone for Cloud SQL."
+  description = "The primary zone for AlloyDB."
   type        = string
   default     = "us-central1-a"
 }

@@ -23,7 +23,7 @@ function resetDatabase() {
     { timestamp: new Date().toISOString(), type: 'system', message: 'Database initialization sequence started.' }
   ];
 
-  // 1. Cloud SQL Mock Data
+  // 1. AlloyDB Mock Data
   departments = [
     { id: 'dept_retail_cs', name: 'Store Customer Service', sector: 'Retail', head_id: 'emp_102', total_staff: 5 },
     { id: 'dept_health_uc', name: 'Urgent Care Unit', sector: 'Healthcare', head_id: 'emp_202', total_staff: 4 },
