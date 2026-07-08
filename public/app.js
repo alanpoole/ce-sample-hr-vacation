@@ -305,10 +305,9 @@ async function handleRequestSubmit(e) {
   };
 
   try {
-    // 1. Trigger SVG Packet Animation through security gateway: Browser -> GCLB -> IAP -> Frontend -> Backend
+    // 1. Trigger SVG Packet Animation through security gateway: Browser -> GCLB -> Frontend -> Backend
     await animatePacket('browser', 'gclb');
-    await animatePacket('gclb', 'iap');
-    await animatePacket('iap', 'fe');
+    await animatePacket('gclb', 'fe');
     await animatePacket('fe', 'be');
 
     const res = await fetch('/api/requests', {
@@ -344,8 +343,7 @@ async function handleWorkflowAction(requestId, action) {
   try {
     // FE -> BE security gateway animation
     await animatePacket('browser', 'gclb');
-    await animatePacket('gclb', 'iap');
-    await animatePacket('iap', 'fe');
+    await animatePacket('gclb', 'fe');
     await animatePacket('fe', 'be');
 
     const res = await fetch(`/api/requests/${requestId}/action`, {

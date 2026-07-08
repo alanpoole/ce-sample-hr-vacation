@@ -153,10 +153,6 @@
                     <stop offset="0%" stop-color="hsl(200, 100%, 40%)" />
                     <stop offset="100%" stop-color="hsl(215, 95%, 55%)" />
                   </linearGradient>
-                  <linearGradient id="iapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="hsl(38, 95%, 45%)" />
-                    <stop offset="100%" stop-color="hsl(48, 100%, 55%)" />
-                  </linearGradient>
                 </defs>
 
                 <!-- Private VPC boundary box -->
@@ -166,10 +162,8 @@
                 <!-- Interconnect / Communication Pathways -->
                 <!-- Browser to GCLB -->
                 <path id="path-browser-gclb" d="M 60 55 L 195 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- GCLB to IAP -->
-                <path id="path-gclb-iap" d="M 195 55 L 345 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- IAP to Frontend -->
-                <path id="path-iap-fe" d="M 345 55 L 495 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <!-- GCLB to Frontend -->
+                <path id="path-gclb-fe" d="M 195 55 L 495 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
                 <!-- Frontend to Backend -->
                 <path id="path-fe-be" d="M 495 55 Q 430 180 300 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
                 <!-- Backend to AlloyDB Cluster -->
@@ -187,13 +181,6 @@
                   <rect x="-50" y="-20" width="100" height="40" rx="6" fill="url(#gclbGrad)" stroke="hsl(200, 100%, 50%)" stroke-width="1.5" />
                   <text x="0" y="2" fill="white" font-size="10" font-weight="700" text-anchor="middle">GCLB</text>
                   <text x="0" y="13" fill="hsla(0, 0%, 100%, 0.9)" font-size="7.5" font-family="var(--font-sans)" text-anchor="middle">Global Balancer</text>
-                </g>
-
-                <!-- 3. Node: Identity-Aware Proxy (IAP) -->
-                <g class="svg-node" transform="translate(345, 55)" id="node-iap">
-                  <rect x="-45" y="-20" width="90" height="40" rx="6" fill="url(#iapGrad)" stroke="hsl(45, 100%, 50%)" stroke-width="1.5" />
-                  <text x="0" y="2" fill="white" font-size="10" font-weight="700" text-anchor="middle">IAP Proxy</text>
-                  <text x="0" y="13" fill="hsla(0, 0%, 100%, 0.9)" font-size="7.5" font-family="var(--font-sans)" text-anchor="middle">Identity Gate</text>
                 </g>
 
                 <!-- 4. Node: Frontend Service (Cloud Run - Ingress Locked) -->
@@ -220,8 +207,7 @@
 
                 <!-- Animated Packets -->
                 <circle id="packet-browser-gclb-c" class="packet" />
-                <circle id="packet-gclb-iap-c" class="packet" />
-                <circle id="packet-iap-fe-c" class="packet" />
+                <circle id="packet-gclb-fe-c" class="packet" />
                 <circle id="packet-fe-be-c" class="packet" />
                 <circle id="packet-be-db-c" class="packet" />
               </svg>
@@ -344,7 +330,7 @@
             </div>
             <h3 class="lab-title">Challenge 2: Multi-Region Load Balancing & Anycast Routing</h3>
             <p class="lab-desc">
-              By default, the application is deployed as a secure single-region service with a Global HTTPS Load Balancer (GCLB) and Identity-Aware Proxy (IAP) in <code>us-central1</code>. To reduce network latency for European users, upgrade the baseline GCLB configuration by adding a second regional Cloud Run frontend in <code>europe-west1</code>, declaring a European Serverless Network Endpoint Group (NEG), and registering it as an active-active backend.
+              By default, the application is deployed as a secure single-region service with a Global HTTPS Load Balancer (GCLB) in <code>us-central1</code>. To reduce network latency for European users, upgrade the baseline GCLB configuration by adding a second regional Cloud Run app service in <code>europe-west1</code>, declaring a European Serverless Network Endpoint Group (NEG), and registering it as an active-active backend.
             </p>
             <pre class="lab-code"><code># Add a second regional NEG for European users
 resource "google_compute_region_network_endpoint_group" "serverless_neg_europe" {
@@ -352,7 +338,7 @@ resource "google_compute_region_network_endpoint_group" "serverless_neg_europe" 
   network_endpoint_type = "SERVERLESS"
   region                = "europe-west1"
   cloud_run {
-    service = "hr-vacation-frontend-europe"
+    service = "hr-vacation-app-europe"
   }
 }</code></pre>
           </div>
@@ -384,29 +370,7 @@ gcloud dns record-sets transaction execute --zone=hr-vacation-private-zone</code
             </div>
           </div>
 
-          <!-- LAB 4 -->
-          <div class="glass-card lab-card" style="border-left-color: hsl(45, 100%, 50%);">
-            <div class="lab-meta">
-              <span class="lab-badge" style="background: hsl(45, 100%, 15%); color: hsl(45, 100%, 60%);">SECURITY ENGINEER</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 25 mins</span>
-            </div>
-            <h3 class="lab-title">Challenge 4: Decipher and Validate IAP JWT Header</h3>
-            <p class="lab-desc">
-              Identity-Aware Proxy secures your ingress but how does your app prevent spoofing if someone accesses the local subnet? You MUST verify the <code>X-Goog-IAP-JWT-Assertion</code> header cryptographically in Node.js. Use Google's public certificates endpoint to verify the JWT signature.
-            </p>
-            <pre class="lab-code"><code>// Node.js IAP JWT Verification snippet
-const {OAuth2Client} = require('google-auth-library');
-const oAuth2Client = new OAuth2Client();
 
-async function verifyIAPToken(iapToken, audience) {
-  const ticket = await oAuth2Client.getIapPubKey(iapToken);
-  const key = ticket.pubkey;
-  const payload = await oAuth2Client.verifySignedJwtWithKey(
-    iapToken, key, audience, ['https://cloud.google.com/iap']
-  );
-  return payload;
-}</code></pre>
-          </div>
 
 
         </div>
