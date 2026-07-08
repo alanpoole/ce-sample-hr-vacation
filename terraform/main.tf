@@ -151,7 +151,7 @@ resource "google_dns_record_set" "write_dns" {
   managed_zone = google_dns_managed_zone.private_zone.name
   type         = "A"
   ttl          = 60
-  rrdatas      = [google_alloydb_cluster.primary.ip_address]
+  rrdatas      = [google_alloydb_instance.primary_instance.ip_address]
 }
 
 # Map DB_READ_HOST: read-db.hr-vacation.internal -> Primary AlloyDB Private IP (resolving to local read pools)
@@ -160,7 +160,7 @@ resource "google_dns_record_set" "read_dns" {
   managed_zone = google_dns_managed_zone.private_zone.name
   type         = "A"
   ttl          = 60
-  rrdatas      = [google_alloydb_cluster.primary.ip_address]
+  rrdatas      = [google_alloydb_instance.primary_instance.ip_address]
 }
 
 # -------------------------------------------------------------
