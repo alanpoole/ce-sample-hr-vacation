@@ -1,7 +1,11 @@
 #!/bin/bash
 
+# Ensure local workspace binaries are in the path (e.g. locally downloaded Terraform)
+export PATH="$PATH:$(pwd)/.bin"
+
 # Exit immediately if any command exits with a non-zero status
 set -e
+
 
 # Setup clean log styling
 BOLD='\033[1;32m'
