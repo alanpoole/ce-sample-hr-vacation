@@ -13,8 +13,8 @@ Currently, the application runs as a **single-region** service isolated inside a
 ### Core Google Cloud Services Used:
 1. **Cloud Run (Frontend)**: Serves the containerized UI for employees and managers to submit/review time-off requests.
 2. **Cloud Run (Backend)**: Drives business rules engines, validations, and routes transactional states.
-3. **Cloud SQL**: Relational database managing strongly consistent employee records, department structures, and accrued vacation totals.
-4. **Firestore (Native)**: Highly scalable NoSQL document store capturing asynchronous workflow states (`/workflows`) and live notification events (`/notifications`).
+3. **AlloyDB for PostgreSQL**: Primary enterprise-grade relational database management system, handling workflows, notifications, employees, and accrual balances with multi-region active-passive disaster recovery.
+4. **Cloud DNS**: Manages private DNS zones inside our Virtual Private Cloud to abstract database hostnames and support zero-code-change regional failovers.
 5. **Virtual Private Cloud (VPC)**: The private networking boundary. Utilizes **Serverless VPC Access connectors** and **Private Service Connect / Private Service Networking** to isolate the database and serverless runtimes inside internal networks.
 
 ---
@@ -23,10 +23,9 @@ Currently, the application runs as a **single-region** service isolated inside a
 
 This application embeds a beautiful **Diagnostics & Sim playground** that lets you learn interactively:
 * **Role Swap Selector**: Take on roles ranging from a sales associate in the US to clinical directors in the UK and VP of Compliance in Japan. Swapping roles updates your profile context, department boundaries, and accrual balances.
-* **Animated Network Topology**: Submitting a request triggers a live, animated traffic trace across a Google Cloud architecture diagram. Watch the packet route from the **Frontend** to the **Backend API**, through the private VPC gateway, down to the relational **Cloud SQL** (relational database queries) and NoSQL **Firestore** collections in real time.
+* **Animated Network Topology**: Submitting a request triggers a live, animated traffic trace across a Google Cloud architecture diagram. Watch the packet route from the **Frontend** to the **Backend API**, through the private VPC gateway, down to the **AlloyDB Cluster** in real time.
 * **Real-Time DB Inspectors**:
-  * **Mock SQL Console**: Watch relational tables (`employees`, `accrual_balances`, `departments`) change as you submit requests or approve them.
-  * **Mock Firestore Document Tree**: Inspect NoSQL JSON payloads inside key-value document databases.
+  * **Mock AlloyDB Console**: Watch consolidated relational tables (`employees`, `accrual_balances`, `departments`, `workflows`, `notifications`) change as you submit requests or approve them.
 * **Interactive Rules Validation Engine**: Experience industry-grade regulatory limits:
   * **Retail Blackouts**: Restricts requests during holiday shopping rushes (Nov 15 - Jan 5) without VP escalation.
   * **Healthcare On-Call Coverage**: Restricts time off if more than 30% of a department's staff are off concurrently (ensuring 70%+ patient safety coverage).
@@ -73,7 +72,7 @@ gcloud services enable compute.googleapis.com deploymentmanager.googleapis.com v
 ```
 
 ### Step 2: Provision Infrastructure with Terraform (IaC)
-A complete **Terraform** module is provided under the `terraform/` directory. This module outlines how to provision the baseline secure topology (private VPC subnetwork, Serverless VPC Access connector, Private Service Connection peering, an isolated PostgreSQL instance, Native Firestore, and the Global Load Balancer with Identity-Aware Proxy (IAP) enabled by default, exposing access to the student's email defined via `var.student_email`).
+A complete **Terraform** module is provided under the `terraform/` directory. This module outlines how to provision the baseline secure topology (private VPC subnetwork, Serverless VPC Access connector, Private Service Connection peering, highly resilient AlloyDB primary and secondary clusters, private Cloud DNS zones, and the Global Load Balancer with Identity-Aware Proxy (IAP) enabled by default, exposing access to the student's email defined via `var.student_email`).
 
 You **must deploy Terraform before deploying the Cloud Run application** with `deploy.sh`. Initialize and apply the Terraform configuration:
 ```bash
@@ -165,27 +164,22 @@ resource "google_compute_backend_service" "backend_service" {
 }
 ```
 
-### Step 4: Configure Cross-Region SQL Replication
-To ensure European users experience low-latency read operations, set up a regional Cloud SQL read replica in `europe-west1`:
+### Step 4: Configure Cross-Region AlloyDB Replication & Private DNS
+To ensure highly available relational transactions and seamless regional failovers, configure an AlloyDB Primary cluster in `us-central1` and an asynchronous Secondary replica cluster in `europe-west1` with Continuous Storage-level log streaming. Map private DNS records inside Cloud DNS to provide abstraction endpoints:
 ```hcl
-resource "google_sql_database_instance" "replica_europe" {
-  name                 = "hr-vacation-sql-db-replica"
-  region               = "europe-west1"
-  database_version     = "POSTGRES_15"
-  master_instance_name = google_sql_database_instance.postgres.name
-
-  settings {
-    tier = "db-f1-micro"
-    ip_configuration {
-      ipv4_enabled    = false
-      private_network = google_compute_network.vpc_network.id
-    }
-  }
+# Map DB_WRITE_HOST: write-db.hr-vacation.internal -> Primary AlloyDB IP
+resource "google_dns_record_set" "write_dns" {
+  name         = "write-db.hr-vacation.internal."
+  managed_zone = google_dns_managed_zone.private_zone.name
+  type         = "A"
+  ttl          = 60
+  rrdatas      = [google_alloydb_cluster.primary.ip_address]
 }
 ```
 
-### Step 5: Verify the Multi-Regional Setup
+### Step 5: Verify the Multi-Regional Setup & Failover
 1. Apply the updated Terraform configuration (`terraform apply`).
 2. Verify that GCLB forwards traffic to both `us-central1` and `europe-west1` based on user location.
-3. Access the portal and inspect the simulated terminal logs. Confirm that Central IAP identity verification remains unified across all entry nodes while requests are routed locally!
+3. Access the portal and inspect the simulated terminal logs. Confirm that Central IAP identity verification remains unified across all entry nodes while requests are routed securely to the nearest database node!
+4. Practice a simulated disaster recovery failover by promoting the Secondary AlloyDB cluster in `europe-west1` and redirecting Cloud DNS `write-db.hr-vacation.internal.` record to point to the promoted instance without redeploying the backend.
 

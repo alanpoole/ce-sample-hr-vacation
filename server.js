@@ -7,15 +7,15 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // -------------------------------------------------------------
-// IN-MEMORY DATA STORAGE (Mocking Cloud SQL & Firestore)
+// IN-MEMORY DATA STORAGE (Mocking AlloyDB Cluster Relational Tables)
 // -------------------------------------------------------------
 
 let employees = [];
 let accrualBalances = [];
 let departments = [];
-let workflows = []; // Firestore `/workflows`
-let notifications = []; // Firestore `/notifications`
-let dbLogs = []; // relational and NoSQL transaction logs for students to inspect
+let workflows = []; // AlloyDB table `workflows`
+let notifications = []; // AlloyDB table `notifications`
+let dbLogs = []; // Relational SQL transaction logs for students to inspect
 
 // Reset/Initialize Database State
 function resetDatabase() {
@@ -57,7 +57,7 @@ function resetDatabase() {
   ];
   dbLogs.push({ timestamp: new Date().toISOString(), type: 'sql', message: 'INSERT INTO accrual_balances (employee_id, year, base_days, accrued_days, used_days, rollover_days) VALUES (6 rows...)' });
 
-  // 2. Firestore Mock Data (NoSQL collection: workflows)
+  // 2. AlloyDB Mock Data (Table: workflows)
   workflows = [
     {
       id: 'req_901',
@@ -92,15 +92,23 @@ function resetDatabase() {
       updated_at: '2026-06-25T08:15:00Z'
     }
   ];
-  dbLogs.push({ timestamp: new Date().toISOString(), type: 'firestore', message: 'Firestore: Initialized collection "/workflows" with 2 active workflow states.' });
+  dbLogs.push({ 
+    timestamp: new Date().toISOString(), 
+    type: 'sql', 
+    message: `-- Workflows Seeding Queries\nINSERT INTO workflows (id, employee_id, employee_name, sector, country, start_date, end_date, days_requested, status, current_step, approval_chain, reason, created_at, updated_at) VALUES\n('req_901', 'emp_101', 'Alice Vance', 'Retail', 'US', '2026-08-10', '2026-08-14', 5, 'approved', 'completed', ARRAY['emp_102'], 'Summer family trip', '2026-06-01T10:00:00Z', '2026-06-02T14:30:00Z'),\n('req_902', 'emp_201', 'Dr. Clara Mendez', 'Healthcare', 'UK', '2026-10-12', '2026-10-16', 5, 'pending', 'manager_review', ARRAY['emp_202'], 'Medical conference rollover vacation', '2026-06-25T08:15:00Z', '2026-06-25T08:15:00Z');` 
+  });
 
-  // Firestore Mock Data (NoSQL collection: notifications)
+  // AlloyDB Mock Data (Table: notifications)
   notifications = [
     { id: 'notif_001', user_id: 'emp_101', message: 'Your vacation request req_901 has been APPROVED by Bob Smith.', read: true, created_at: '2026-06-02T14:30:00Z' },
     { id: 'notif_002', user_id: 'emp_202', message: 'New pending vacation request req_902 received from Dr. Clara Mendez.', read: false, created_at: '2026-06-25T08:15:00Z' }
   ];
-  dbLogs.push({ timestamp: new Date().toISOString(), type: 'firestore', message: 'Firestore: Initialized collection "/notifications" with 2 system notifications.' });
-  dbLogs.push({ timestamp: new Date().toISOString(), type: 'system', message: 'Mock Single-Region Subsystem fully loaded and bound.' });
+  dbLogs.push({ 
+    timestamp: new Date().toISOString(), 
+    type: 'sql', 
+    message: `-- Notifications Seeding Queries\nINSERT INTO notifications (id, user_id, message, read, created_at) VALUES\n('notif_001', 'emp_101', 'Your vacation request req_901 has been APPROVED by Bob Smith.', true, '2026-06-02T14:30:00Z'),\n('notif_002', 'emp_202', 'New pending vacation request req_902 received from Dr. Clara Mendez.', false, '2026-06-25T08:15:00Z');` 
+  });
+  dbLogs.push({ timestamp: new Date().toISOString(), type: 'system', message: 'AlloyDB Resilient Cluster Subsystem fully loaded and bound.' });
 }
 
 // Perform initial boot DB reset
@@ -359,9 +367,6 @@ app.post('/api/requests', (req, res) => {
   // SQL Relational Queries for logs
   logDBAction('sql', `SELECT * FROM accrual_balances WHERE employee_id = '${employee.id}' AND year = 2026;`);
   logDBAction('sql', `SELECT COUNT(*) FROM employees WHERE department_id = '${employee.department_id}';`);
-  
-  // Firestore document creation log
-  logDBAction('firestore', `Firestore: db.collection("workflows").doc("${requestId}").set(${JSON.stringify(newRequest, null, 2)});`);
 
   // Create manager notification
   const managerId = employee.manager_id || 'emp_302'; // fallback to Compliance head if no direct manager
@@ -376,7 +381,18 @@ app.post('/api/requests', (req, res) => {
     created_at: new Date().toISOString()
   };
   notifications.unshift(notification);
-  logDBAction('firestore', `Firestore: db.collection("notifications").doc("${notifId}").set(${JSON.stringify(notification, null, 2)});`);
+
+  const approvalChainStr = newRequest.approval_chain.length > 0 
+    ? `ARRAY[${newRequest.approval_chain.map(id => `'${id}'`).join(', ')}]` 
+    : 'ARRAY[]::TEXT[]';
+
+  logDBAction('sql', `BEGIN TRANSACTION;
+INSERT INTO workflows (id, employee_id, employee_name, sector, country, start_date, end_date, days_requested, status, current_step, approval_chain, reason, created_at, updated_at)
+VALUES ('${requestId}', '${employee.id}', '${employee.name}', '${employee.sector}', '${employee.country}', '${start_date}', '${end_date}', ${daysRequested}, '${initialStatus}', '${initialStep}', ${approvalChainStr}, '${reason || 'N/A'}', '${newRequest.created_at}', '${newRequest.updated_at}');
+
+INSERT INTO notifications (id, user_id, message, read, created_at)
+VALUES ('${notifId}', '${managerId}', '${notifMsg}', FALSE, '${notification.created_at}');
+COMMIT;`);
 
   res.status(201).json({
     success: true,
@@ -423,22 +439,14 @@ app.post('/api/requests/:id/action', (req, res) => {
     workflow.current_step = 'completed';
     workflow.updated_at = new Date().toISOString();
 
-    // UPDATE ACCRUAL BALANCES (Cloud SQL Transact-SQL SQL execution)
     const balance = accrualBalances.find(b => b.employee_id === workflow.employee_id);
+    let oldUsed = 0;
+    let newUsed = 0;
     if (balance) {
-      const oldUsed = balance.used_days;
+      oldUsed = balance.used_days;
       balance.used_days += workflow.days_requested;
-      
-      logDBAction('sql', `BEGIN TRANSACTION;
-UPDATE accrual_balances 
-SET used_days = used_days + ${workflow.days_requested} 
-WHERE employee_id = '${workflow.employee_id}' AND year = 2026;
-INSERT INTO audit_vacation_logs (request_id, actor_id, prev_used, new_used) VALUES ('${requestId}', '${actor_id}', ${oldUsed}, ${balance.used_days});
-COMMIT;`);
+      newUsed = balance.used_days;
     }
-
-    // Firestore Update Log
-    logDBAction('firestore', `Firestore: db.collection("workflows").doc("${requestId}").update({ status: "approved", current_step: "completed" });`);
 
     // Create Employee Notification
     const notifId = 'notif_' + Math.floor(1000 + Math.random() * 9000);
@@ -451,15 +459,27 @@ COMMIT;`);
       created_at: new Date().toISOString()
     };
     notifications.unshift(notification);
-    logDBAction('firestore', `Firestore: db.collection("notifications").doc("${notifId}").set(${JSON.stringify(notification, null, 2)});`);
+
+    logDBAction('sql', `BEGIN TRANSACTION;
+UPDATE workflows 
+SET status = 'approved', current_step = 'completed', updated_at = '${workflow.updated_at}' 
+WHERE id = '${requestId}';
+
+UPDATE accrual_balances 
+SET used_days = used_days + ${workflow.days_requested} 
+WHERE employee_id = '${workflow.employee_id}' AND year = 2026;
+
+INSERT INTO audit_vacation_logs (request_id, actor_id, prev_used, new_used) 
+VALUES ('${requestId}', '${actor_id}', ${oldUsed}, ${newUsed});
+
+INSERT INTO notifications (id, user_id, message, read, created_at)
+VALUES ('${notifId}', '${workflow.employee_id}', '${notifMsg}', FALSE, '${notification.created_at}');
+COMMIT;`);
 
   } else if (action === 'reject') {
     workflow.status = 'rejected';
     workflow.current_step = 'completed';
     workflow.updated_at = new Date().toISOString();
-
-    // Firestore Update Log
-    logDBAction('firestore', `Firestore: db.collection("workflows").doc("${requestId}").update({ status: "rejected", current_step: "completed" });`);
 
     // Create Employee Notification
     const notifId = 'notif_' + Math.floor(1000 + Math.random() * 9000);
@@ -472,7 +492,15 @@ COMMIT;`);
       created_at: new Date().toISOString()
     };
     notifications.unshift(notification);
-    logDBAction('firestore', `Firestore: db.collection("notifications").doc("${notifId}").set(${JSON.stringify(notification, null, 2)});`);
+
+    logDBAction('sql', `BEGIN TRANSACTION;
+UPDATE workflows 
+SET status = 'rejected', current_step = 'completed', updated_at = '${workflow.updated_at}' 
+WHERE id = '${requestId}';
+
+INSERT INTO notifications (id, user_id, message, read, created_at)
+VALUES ('${notifId}', '${workflow.employee_id}', '${notifMsg}', FALSE, '${notification.created_at}');
+COMMIT;`);
   }
 
   res.json({
@@ -486,6 +514,10 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`HR Vacation Request Subsystem Server listening on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`HR Vacation Request Subsystem Server listening on port ${PORT}`);
+  });
+}
+
+module.exports = app;

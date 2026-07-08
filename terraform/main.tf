@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -54,45 +58,113 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 }
 
 # -------------------------------------------------------------
-# 2. PRIMARY RELATION RELATIONAL STORE (Cloud SQL Postgres)
+# 2. RANDOM PASSWORD FOR ALLOYDB CLUSTER
 # -------------------------------------------------------------
 
-resource "google_sql_database_instance" "postgres" {
-  name             = "hr-vacation-sql-db"
-  region           = var.region
-  database_version = "POSTGRES_15"
+resource "random_password" "alloydb_password" {
+  length  = 16
+  special = false
+}
+
+# -------------------------------------------------------------
+# 3. PRIMARY ALLOYDB CLUSTER & INSTANCE (us-central1)
+# -------------------------------------------------------------
+
+resource "google_alloydb_cluster" "primary" {
+  cluster_id = "hr-vacation-cluster-primary"
+  location   = var.region # us-central1
+  
+  network_config {
+    network = google_compute_network.vpc_network.id
+  }
+
+  initial_user {
+    password = random_password.alloydb_password.result
+  }
+
+  deletion_protection = false # Dev environment flag
+}
+
+# Primary read-write instance (2-vCPU node)
+resource "google_alloydb_instance" "primary_instance" {
+  cluster       = google_alloydb_cluster.primary.name
+  instance_id   = "hr-vacation-primary-instance"
+  instance_type = "PRIMARY"
+
+  machine_config {
+    cpu_count = 2
+  }
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
+}
 
-  settings {
-    tier = "db-f1-micro" # Lightweight development tier
-    
-    ip_configuration {
-      ipv4_enabled    = false # Isolate fully from public internet
-      private_network = google_compute_network.vpc_network.id
-    }
+# -------------------------------------------------------------
+# 4. ALLOYDB SECONDARY DR CLUSTER (europe-west1)
+# -------------------------------------------------------------
 
-    # Backup configurations required for replication / Point-in-time recoveries
-    backup_configuration {
-      enabled    = true
-      start_time = "02:00"
+resource "google_alloydb_cluster" "secondary" {
+  cluster_id   = "hr-vacation-cluster-secondary"
+  location     = "europe-west1"
+  cluster_type = "SECONDARY"
+
+  network_config {
+    network = google_compute_network.vpc_network.id
+  }
+
+  secondary_config {
+    primary_cluster_name = google_alloydb_cluster.primary.name
+  }
+
+  deletion_protection = false
+}
+
+# Secondary replica instance in europe-west1
+resource "google_alloydb_instance" "secondary_instance" {
+  cluster       = google_alloydb_cluster.secondary.name
+  instance_id   = "hr-vacation-secondary-instance"
+  instance_type = "SECONDARY"
+
+  machine_config {
+    cpu_count = 2
+  }
+
+  depends_on = [google_alloydb_instance.primary_instance]
+}
+
+# -------------------------------------------------------------
+# 5. ZERO-CODE-CHANGE DNS ENDPOINTS (Cloud DNS Private Zone)
+# -------------------------------------------------------------
+
+resource "google_dns_managed_zone" "private_zone" {
+  name        = "hr-vacation-private-zone"
+  dns_name    = "hr-vacation.internal."
+  description = "Internal Private Zone for DB abstraction and seamless failovers"
+  
+  visibility = "private"
+  
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.vpc_network.id
     }
   }
 }
 
-resource "google_sql_database" "hr_database" {
-  name     = "hr_vacation"
-  instance = google_sql_database_instance.postgres.name
+# Map DB_WRITE_HOST: write-db.hr-vacation.internal -> Primary AlloyDB Private IP
+resource "google_dns_record_set" "write_dns" {
+  name         = "write-db.hr-vacation.internal."
+  managed_zone = google_dns_managed_zone.private_zone.name
+  type         = "A"
+  ttl          = 60
+  rrdatas      = [google_alloydb_cluster.primary.ip_address]
 }
 
-# -------------------------------------------------------------
-# 3. ASYNCHRONOUS WORKFLOW DOCUMENT STORE (Firestore)
-# -------------------------------------------------------------
-
-resource "google_firestore_database" "firestore" {
-  name        = "(default)"
-  location_id = "nam5" # US Multi-region
-  type        = "FIRESTORE_NATIVE"
+# Map DB_READ_HOST: read-db.hr-vacation.internal -> Primary AlloyDB Private IP (resolving to local read pools)
+resource "google_dns_record_set" "read_dns" {
+  name         = "read-db.hr-vacation.internal."
+  managed_zone = google_dns_managed_zone.private_zone.name
+  type         = "A"
+  ttl          = 60
+  rrdatas      = [google_alloydb_cluster.primary.ip_address]
 }
 
 # -------------------------------------------------------------
@@ -116,8 +188,16 @@ resource "google_cloud_run_v2_service" "backend_service" {
         container_port = 8080
       }
       env {
-        name  = "DB_HOST"
-        value = google_sql_database_instance.postgres.private_ip_address
+        name  = "DB_WRITE_HOST"
+        value = "write-db.hr-vacation.internal"
+      }
+      env {
+        name  = "DB_READ_HOST"
+        value = "read-db.hr-vacation.internal"
+      }
+      env {
+        name  = "DB_PASS"
+        value = random_password.alloydb_password.result
       }
     }
     

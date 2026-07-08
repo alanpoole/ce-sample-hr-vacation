@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GCP HR Subsystem - Classroom Vacation Simulator</title>
-  <meta name="description" content="An interactive classroom simulation of a Google Cloud Platform vacation HR request subsystem, showing Cloud Run, Cloud SQL, Firestore, and Private VPC connections in action.">
+  <meta name="description" content="An interactive classroom simulation of a Google Cloud Platform vacation HR request subsystem, showing Cloud Run, AlloyDB Resilient Cluster, and Private VPC connections in action.">
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -172,10 +172,8 @@
                 <path id="path-iap-fe" d="M 345 55 L 495 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
                 <!-- Frontend to Backend -->
                 <path id="path-fe-be" d="M 495 55 Q 430 180 300 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- Backend to SQL -->
-                <path id="path-be-sql" d="M 300 180 Q 300 300 150 300" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- Backend to Firestore -->
-                <path id="path-be-fs" d="M 300 180 Q 300 300 450 300" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <!-- Backend to AlloyDB Cluster -->
+                <path id="path-be-db" d="M 300 180 L 300 300" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
 
                 <!-- 1. Node: User Browser (External) -->
                 <g class="svg-node" transform="translate(60, 55)" id="node-browser">
@@ -213,18 +211,11 @@
                   <text x="0" y="15" fill="hsla(0, 0%, 100%, 0.8)" font-size="8" font-family="var(--font-mono)" text-anchor="middle">Rules Engine (BE)</text>
                 </g>
 
-                <!-- 6. Node: Cloud SQL Database -->
-                <g class="svg-node" transform="translate(150, 300)" id="node-sql">
-                  <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
-                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">Relational (SQL)</text>
-                  <text x="0" y="15" fill="var(--primary)" font-size="8" text-anchor="middle">Cloud SQL</text>
-                </g>
-
-                <!-- 7. Node: Firestore NoSQL -->
-                <g class="svg-node" transform="translate(450, 300)" id="node-fs">
-                  <rect x="-60" y="-20" width="120" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
-                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">NoSQL (Docs)</text>
-                  <text x="0" y="15" fill="var(--warning)" font-size="8" text-anchor="middle">Firestore</text>
+                <!-- Node: AlloyDB Resilient Cluster -->
+                <g class="svg-node" transform="translate(300, 300)" id="node-db">
+                  <rect x="-70" y="-20" width="140" height="40" rx="6" fill="var(--bg-input)" stroke="var(--primary)" stroke-width="1.5" />
+                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">AlloyDB Cluster</text>
+                  <text x="0" y="15" fill="var(--primary)" font-size="8" text-anchor="middle">Active Primary (us-central1)</text>
                 </g>
 
                 <!-- Animated Packets -->
@@ -232,8 +223,7 @@
                 <circle id="packet-gclb-iap-c" class="packet" />
                 <circle id="packet-iap-fe-c" class="packet" />
                 <circle id="packet-fe-be-c" class="packet" />
-                <circle id="packet-be-sql-c" class="packet" />
-                <circle id="packet-be-fs-c" class="packet" />
+                <circle id="packet-be-db-c" class="packet" />
               </svg>
             </div>
           </div>
@@ -292,25 +282,15 @@
           </h2>
           
           <div class="db-tabs">
-            <button class="db-tab-btn active" id="db-tab-sql">Cloud SQL (Relational Tables)</button>
-            <button class="db-tab-btn" id="db-tab-fs">Firestore NoSQL Documents</button>
+            <button class="db-tab-btn active" id="db-tab-sql">AlloyDB Relational Output</button>
           </div>
 
           <div id="db-sql-pane">
             <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
-              Tables: <code style="color: var(--primary);">employees</code>, <code style="color: var(--primary);">accrual_balances</code>, <code style="color: var(--primary);">departments</code>
+              Tables: <code style="color: var(--primary);">employees</code>, <code style="color: var(--primary);">accrual_balances</code>, <code style="color: var(--primary);">departments</code>, <code style="color: var(--primary);">workflows</code>, <code style="color: var(--primary);">notifications</code>
             </div>
             <div class="db-console" id="sql-console-view">
               <!-- Render SQL data dynamically -->
-            </div>
-          </div>
-
-          <div id="db-fs-pane" style="display: none;">
-            <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
-              Collections: <code style="color: var(--warning);">/workflows/{requestId}</code>, <code style="color: var(--warning);">/notifications/{notificationId}</code>
-            </div>
-            <div class="db-console" id="fs-console-view">
-              <!-- Render JSON Document hierarchies dynamically -->
             </div>
           </div>
         </div>
@@ -383,10 +363,25 @@ resource "google_compute_region_network_endpoint_group" "serverless_neg_europe" 
               <span class="lab-badge lab-hard">DEVOPS ENGINEER</span>
               <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 45 mins</span>
             </div>
-            <h3 class="lab-title">Challenge 3: Active-Active Workflow Synced Firestore</h3>
+            <h3 class="lab-title">Challenge 3: AlloyDB Disaster Recovery & Regional Failover</h3>
             <p class="lab-desc">
-              Firestore has multi-region options that run on an active-active model (replicating records inside US or Europe dual-regions). Explore changing the Firestore database resource from <code>nam5</code> (US Multi-region) to <code>eur3</code> (Europe Multi-region) inside your Terraform module and document how replication lag impacts live locking rules.
+              AlloyDB utilizes continuous storage-level log streaming to replicate transactions to secondary regional clusters with typical latency under 1 second. In this lab, simulate a catastrophic regional failure of <code>us-central1</code>. Follow the Disaster Recovery Runbook to promote the secondary cluster <code>europe-west1</code> to standalone primary, then update Cloud DNS records so running backends automatically reroute database queries without code modification or redeployments.
             </p>
+            
+            <div class="form-group">
+              <label>DR Promotion Command Snippet</label>
+              <pre class="lab-code"><code># 1. Promote secondary cluster to primary read-write
+gcloud alloydb clusters promote-secondary hr-vacation-cluster-secondary \
+    --region=europe-west1
+
+# 2. Update DNS zone endpoints inside VPC
+gcloud dns record-sets transaction start --zone=hr-vacation-private-zone
+gcloud dns record-sets transaction remove --zone=hr-vacation-private-zone \
+    --name="write-db.hr-vacation.internal." --ttl=60 --type=A "[PRIMARY_OLD_IP]"
+gcloud dns record-sets transaction add --zone=hr-vacation-private-zone \
+    --name="write-db.hr-vacation.internal." --ttl=60 --type=A "[EUROPE_NEW_IP]"
+gcloud dns record-sets transaction execute --zone=hr-vacation-private-zone</code></pre>
+            </div>
           </div>
 
           <!-- LAB 4 -->
