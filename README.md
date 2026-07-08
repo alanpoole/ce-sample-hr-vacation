@@ -96,7 +96,7 @@ In `terraform/main.tf`, declare a new regional Cloud Run app service in a second
 resource "google_cloud_run_v2_service" "app_europe" {
   name     = "hr-vacation-app-europe"
   location = "europe-west1"
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_AND_CLOUD_LOAD_BALANCING"
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
     containers {

@@ -81,8 +81,6 @@ resource "google_alloydb_cluster" "primary" {
   initial_user {
     password = random_password.alloydb_password.result
   }
-
-  deletion_protection = false # Dev environment flag
 }
 
 # Primary read-write instance (2-vCPU node)
@@ -114,8 +112,6 @@ resource "google_alloydb_cluster" "secondary" {
   secondary_config {
     primary_cluster_name = google_alloydb_cluster.primary.name
   }
-
-  deletion_protection = false
 }
 
 # Secondary replica instance in europe-west1
@@ -180,7 +176,7 @@ resource "google_artifact_registry_repository" "app_repo" {
 resource "google_cloud_run_v2_service" "app_service" {
   name     = "hr-vacation-app"
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_AND_CLOUD_LOAD_BALANCING"
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
     containers {
