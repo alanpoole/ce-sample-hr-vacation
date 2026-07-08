@@ -97,38 +97,7 @@ resource "google_alloydb_instance" "primary_instance" {
 }
 
 # -------------------------------------------------------------
-# 4. ALLOYDB SECONDARY DR CLUSTER (europe-west1)
-# -------------------------------------------------------------
-
-resource "google_alloydb_cluster" "secondary" {
-  cluster_id   = "hr-vacation-cluster-secondary"
-  location     = "europe-west1"
-  cluster_type = "SECONDARY"
-
-  network_config {
-    network = google_compute_network.vpc_network.id
-  }
-
-  secondary_config {
-    primary_cluster_name = google_alloydb_cluster.primary.name
-  }
-}
-
-# Secondary replica instance in europe-west1
-resource "google_alloydb_instance" "secondary_instance" {
-  cluster       = google_alloydb_cluster.secondary.name
-  instance_id   = "hr-vacation-secondary-instance"
-  instance_type = "SECONDARY"
-
-  machine_config {
-    cpu_count = 2
-  }
-
-  depends_on = [google_alloydb_instance.primary_instance]
-}
-
-# -------------------------------------------------------------
-# 5. ZERO-CODE-CHANGE DNS ENDPOINTS (Cloud DNS Private Zone)
+# 4. ZERO-CODE-CHANGE DNS ENDPOINTS (Cloud DNS Private Zone)
 # -------------------------------------------------------------
 
 resource "google_dns_managed_zone" "private_zone" {
@@ -164,7 +133,7 @@ resource "google_dns_record_set" "read_dns" {
 }
 
 # -------------------------------------------------------------
-# 4. ARTIFACT REGISTRY & COMPUTE LAYER (Cloud Run Services)
+# 5. ARTIFACT REGISTRY & COMPUTE LAYER (Cloud Run Services)
 # -------------------------------------------------------------
 
 resource "google_artifact_registry_repository" "app_repo" {
@@ -215,7 +184,7 @@ resource "google_cloud_run_v2_service_iam_member" "app_public" {
 }
 
 # -------------------------------------------------------------
-# 5. GLOBAL EXTERNAL LOAD BALANCER (GCLB) WITH IAP DISABELD
+# 6. GLOBAL EXTERNAL LOAD BALANCER (GCLB)
 # -------------------------------------------------------------
 
 # Serverless NEG (Network Endpoint Group) targeting the Cloud Run Monolith
