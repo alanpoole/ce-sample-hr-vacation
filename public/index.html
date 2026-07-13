@@ -302,30 +302,49 @@
 
       <!-- PANEL 3: STUDENT LABS -->
       <section class="tab-panel" id="panel-labs">
-        <div class="glass-card">
-          <h2 class="card-title" style="color: var(--border-focus);">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5.89 12.55L12 15.88l6.11-3.33c.8-.43 1.39-1.11 1.39-2V10l-7.5 4.09L4.5 10v.55c0 .89.59 1.57 1.39 2z"/></svg>
-            SRE Case Scenario Investigation Handout
-          </h2>
+        <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <div>
+            <h2 class="card-title" style="color: var(--border-focus); margin-bottom: 0.25rem;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5.89 12.55L12 15.88l6.11-3.33c.8-.43 1.39-1.11 1.39-2V10l-7.5 4.09L4.5 10v.55c0 .89.59 1.57 1.39 2z"/></svg>
+              Module 1 - Phase 2
+            </h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Diagnosing & Remediating Multi-Region Cloud Infrastructure Outages via Agentic AI Tooling
+            </p>
+          </div>
           
-          <div class="glass-card lab-card" style="border-left: 4px solid var(--danger); background: hsla(354, 70%, 54%, 0.04);">
-            <h3 class="lab-title" style="font-size: 1.25rem; color: var(--danger); margin-bottom: 1rem;">Scenario at a Glance</h3>
-            
-            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
-              <strong>Customer:</strong> Cymbal Group — Enterprise Architecture division. You are the on-call Platform Cloud Engineer paged to resolve an outage.
+          <div class="glass-card lab-card" style="border-left: 4px solid var(--primary); background: hsla(217, 89%, 61%, 0.03); margin: 0;">
+            <h3 class="lab-title" style="font-size: 1.1rem; color: var(--primary); margin-bottom: 0.75rem;">Challenge Scenario</h3>
+            <p style="color: var(--text-primary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.75rem;">
+              You are a Platform Cloud Engineer consulting for the Enterprise Architecture division at Cymbal Group. Following your successful migration of the Vacation Request Subsystem from a single-region footprint into a highly available, multi-region architecture, the Cymbal Group development team pushed a new code release (v2.0).
             </p>
-            
-            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
-              <strong>Workload:</strong> The multi-region Online Boutique storefront delivered in Phase 1 — primary <code>us-central1</code>, secondary <code>europe-west1</code>, fronted by a Global External Application Load Balancer.
+            <p style="color: var(--text-primary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.75rem;">
+              This new release was intended to integrate with the newly provisioned AlloyDB database cluster and dynamically route database read/write requests. However, immediately after deployment, the environment became unstable. During simulated peak quarterly review cycles, users are experiencing massive latency, and the backend Cloud Run service is throwing intermittent 500 Internal Server Errors.
             </p>
-            
-            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
-              <strong>Incident:</strong> Immediately after the v2.0 release, European users see massive latency and the backend Cloud Run service throws intermittent HTTP 500 errors during simulated peak quarterly-review load.
+            <p style="color: var(--text-primary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.75rem;">
+              You have been paged to resolve this outage. Because this is a restricted production environment, <strong>you do not have manual access to the Google Cloud Console</strong>. All diagnosis and remediation must be driven through your agentic IDEs, Google Agent Skills, and the Model Context Protocol (MCP) to read logs, diagnose the code logic or infrastructure misconfiguration, and deploy a fix.
             </p>
-            
-            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 0.5rem;">
-              <strong>Guardrail:</strong> This is a restricted production environment — no Cloud Console access. All diagnosis and remediation is driven through agentic AI tools (Cloud Logging / Cloud Trace via MCP, gcloud tool-calling, and code edits in the Antigravity IDE).
-            </p>
+          </div>
+
+          <div class="glass-card lab-card" style="border-left: 4px solid var(--danger); background: hsla(354, 70%, 54%, 0.03); margin: 0;">
+            <h3 class="lab-title" style="font-size: 1.1rem; color: var(--danger); margin-bottom: 0.75rem;">Incident at a Glance</h3>
+            <ul style="padding-left: 1.2rem; color: var(--text-primary); font-size: 0.9rem; line-height: 1.6; display: flex; flex-direction: column; gap: 0.5rem;">
+              <li><strong>Customer:</strong> Cymbal Group — Enterprise Architecture division.</li>
+              <li><strong>Workload:</strong> Multi-region Vacation Request Subsystem (primary <code>us-central1</code>, secondary <code>europe-west1</code>, fronted by a Global External Application Load Balancer).</li>
+              <li><strong>Symptom 1 (Latency):</strong> European client requests load with extreme response latency (~850ms, SLA target &lt; 50ms) due to transatlantic routing hop.</li>
+              <li><strong>Symptom 2 (Outage):</strong> Backend Cloud Run service throws intermittent HTTP 500 database pool exhaustion errors under sustained load.</li>
+            </ul>
+          </div>
+
+          <div class="glass-card lab-card" style="border-left: 4px solid var(--success); background: hsla(142, 69%, 58%, 0.03); margin: 0;">
+            <h3 class="lab-title" style="font-size: 1.1rem; color: var(--success); margin-bottom: 0.75rem;">High-Level Task List</h3>
+            <ol style="padding-left: 1.2rem; color: var(--text-primary); font-size: 0.9rem; line-height: 1.6; display: flex; flex-direction: column; gap: 0.5rem;">
+              <li><strong>Investigate and Triage the Outage:</strong> Query Cloud Logging to identify why the European frontend is taking excessively long to respond and isolate the stack traces generating the HTTP 500 errors.</li>
+              <li><strong>Resolve the Infrastructure Fault (Regional Routing):</strong> Discover the incorrect database host configuration in the European frontend and update the environment variable to route queries locally.</li>
+              <li><strong>Resolve the Application Fault (Connection Leak):</strong> Refactor the backend Node.js connection logic to prevent creating a new database connection pool inside request handlers, resolving the connection pool leak.</li>
+              <li><strong>Deploy the Hotfix:</strong> Rebuild and push the updated image and deploy the new Cloud Run revisions.</li>
+              <li><strong>Validate System Recovery:</strong> Run load verification to confirm European response latency is minimized and error rates maintain 0% under peak loads.</li>
+            </ol>
           </div>
         </div>
       </section>
