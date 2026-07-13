@@ -180,12 +180,17 @@ function triggerReadAnimation(region, routingStatus) {
 
 function populateEmployeeSelector() {
   selectEmployee.innerHTML = '';
+  let hasStudent = false;
   state.employees.forEach(e => {
     const opt = document.createElement('option');
     opt.value = e.id;
     opt.innerText = `${e.name} (${e.sector} - ${e.role})`;
     selectEmployee.appendChild(opt);
+    if (e.id === 'emp_student') hasStudent = true;
   });
+  if (hasStudent) {
+    currentEmployeeId = 'emp_student';
+  }
   selectEmployee.value = currentEmployeeId;
 }
 

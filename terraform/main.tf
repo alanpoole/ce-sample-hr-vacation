@@ -175,6 +175,10 @@ resource "google_cloud_run_v2_service" "app_service" {
         name  = "DB_PASS"
         value = random_password.alloydb_password.result
       }
+      env {
+        name  = "STUDENT_EMAIL"
+        value = var.iap_user
+      }
     }
     
     # Enforce routing outbound traffic through Serverless VPC Connector

@@ -309,20 +309,23 @@
           </h2>
           
           <div class="glass-card lab-card" style="border-left: 4px solid var(--danger); background: hsla(354, 70%, 54%, 0.04);">
-            <h3 class="lab-title" style="font-size: 1.15rem; color: var(--danger); margin-bottom: 0.75rem;">Incident Report: Cymbal HR Vacation Subsystem Outages</h3>
-            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1.25rem;">
-              <strong>SRE Scenario Prompt:</strong> As a Google Cloud SRE expert, you have received alerts that a recent application code release is causing high latency and intermittent connection errors. Your role is to investigate, locate, and resolve these errors across the infrastructure and application tiers.
+            <h3 class="lab-title" style="font-size: 1.25rem; color: var(--danger); margin-bottom: 1rem;">Scenario at a Glance</h3>
+            
+            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+              <strong>Customer:</strong> Cymbal Group — Enterprise Architecture division. You are the on-call Platform Cloud Engineer paged to resolve an outage.
             </p>
-            <div class="sre-alert-info">
-              <h4 style="font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.5rem;">Symptom Log Summary:</h4>
-              <ul style="padding-left: 1.2rem; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">
-                <li>European client requests load with extreme response latency (~850ms, SLA target &lt; 50ms).</li>
-                <li>Database connection exhaustion faults (HTTP 500 code <code>ERR_DB_CONNECTION_EXHAUSTED</code>) are triggered in Cloud Logging after moderate request volume.</li>
-              </ul>
-            </div>
-            <div style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-sans);">
-              Use the GCP Console, Cloud Logging, and the DB Inspector tabs to trace variables, regional routes, and SQL execution streams to formulate your fix patches.
-            </div>
+            
+            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+              <strong>Workload:</strong> The multi-region Online Boutique storefront delivered in Phase 1 — primary <code>us-central1</code>, secondary <code>europe-west1</code>, fronted by a Global External Application Load Balancer.
+            </p>
+            
+            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+              <strong>Incident:</strong> Immediately after the v2.0 release, European users see massive latency and the backend Cloud Run service throws intermittent HTTP 500 errors during simulated peak quarterly-review load.
+            </p>
+            
+            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 0.5rem;">
+              <strong>Guardrail:</strong> This is a restricted production environment — no Cloud Console access. All diagnosis and remediation is driven through agentic AI tools (Cloud Logging / Cloud Trace via MCP, gcloud tool-calling, and code edits in the Antigravity IDE).
+            </p>
           </div>
         </div>
       </section>

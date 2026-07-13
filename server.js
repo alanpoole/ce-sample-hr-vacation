@@ -226,7 +226,26 @@ async function seedDatabaseTables(client) {
     ('emp_301', 2026, 25, 25, 12, 0),
     ('emp_302', 2026, 25, 25, 15, 0)
     ON CONFLICT (employee_id) DO NOTHING;
+  `);
 
+  const studentEmail = process.env.STUDENT_EMAIL;
+  if (studentEmail) {
+    console.log(`Dynamic seeding student profile for email: ${studentEmail}`);
+    const localPart = studentEmail.split('@')[0];
+    const studentName = localPart.charAt(0).toUpperCase() + localPart.slice(1) + ' (Student)';
+    
+    await client.query(`
+      INSERT INTO employees (id, name, sector, country, department_id, role, manager_id, email) VALUES
+      ('emp_student', $1, 'Financial Services', 'US', 'dept_finance_rm', 'Lead SRE Engineer', 'emp_302', $2)
+      ON CONFLICT (id) DO NOTHING;
+
+      INSERT INTO accrual_balances (employee_id, year, base_days, accrued_days, used_days, rollover_days) VALUES
+      ('emp_student', 2026, 25, 25, 2, 5)
+      ON CONFLICT (employee_id) DO NOTHING;
+    `, [studentName, studentEmail]);
+  }
+
+  await client.query(`
     INSERT INTO workflows (id, employee_id, employee_name, sector, country, start_date, end_date, days_requested, status, current_step, approval_chain, reason, created_at, updated_at) VALUES
     ('req_901', 'emp_101', 'Alice Vance', 'Retail', 'US', '2026-08-10', '2026-08-14', 5, 'approved', 'completed', ARRAY['emp_102'], 'Summer family trip', '2026-06-01T10:00:00Z', '2026-06-02T14:30:00Z'),
     ('req_902', 'emp_201', 'Dr. Clara Mendez', 'Healthcare', 'UK', '2026-10-12', '2026-10-16', 5, 'pending', 'manager_review', ARRAY['emp_202'], 'Medical conference rollover vacation', '2026-06-25T08:15:00Z', '2026-06-25T08:15:00Z')

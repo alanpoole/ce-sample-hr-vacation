@@ -106,6 +106,18 @@ cd terraform
 terraform apply -auto-approve
 cd ..
 
+echo -e "${INFO}[7/7] Redeploying Cloud Run services to pull latest image digest...${NC}"
+gcloud run services update hr-vacation-app \
+  --region="$PRIMARY_REGION" \
+  --image="${PRIMARY_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/app:latest"
+
+if gcloud run services describe hr-vacation-app-europe --region="$SECONDARY_REGION" &>/dev/null; then
+  echo "Redeploying European Cloud Run service to pull latest image digest..."
+  gcloud run services update hr-vacation-app-europe \
+    --region="$SECONDARY_REGION" \
+    --image="${PRIMARY_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/app:latest"
+fi
+
 echo -e "${BOLD}===================================================================${NC}"
 echo -e "${BOLD} 🎉 Multi-Region Break-Fix Lab Deployed Successfully!              ${NC}"
 echo -e "${BOLD}===================================================================${NC}"
