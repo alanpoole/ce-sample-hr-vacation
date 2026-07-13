@@ -660,35 +660,53 @@ tr:last-child td {
   margin-bottom: 1.5rem;
 }
 
-.db-tab-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  font-weight: 500;
-  padding: 0.5rem 0.5rem 0.75rem 0.5rem;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: var(--transition);
+/* Database Sidebar tab layout */
+.db-tabs-container {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  min-height: 350px;
 }
 
-.db-tab-btn:hover {
+.db-tabs-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
+  padding-right: 1rem;
+}
+
+.db-tabs-sidebar .db-tab-btn {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: none;
+}
+
+.db-tabs-sidebar .db-tab-btn:hover {
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.db-tab-btn.active {
-  color: var(--border-focus);
-  border-bottom-color: var(--border-focus);
+.db-tabs-sidebar .db-tab-btn.active {
+  background: hsla(263, 90%, 51%, 0.1);
+  border-color: hsla(263, 90%, 51%, 0.2);
+  color: var(--primary);
+  font-weight: 600;
 }
 
-.db-console {
-  background: hsl(222, 47%, 3%);
-  border-radius: var(--radius);
-  border: 1px solid var(--border-color);
-  padding: 1.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+.db-table-content {
+  flex-grow: 1;
   overflow-x: auto;
 }
 

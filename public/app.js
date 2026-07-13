@@ -12,7 +12,7 @@ let state = {
 };
 
 let currentEmployeeId = 'emp_101'; // Default: Alice Vance
-let activeDbTab = 'sql'; // default inspector tab
+let activeTableTab = 'employees'; // default active DB table
 
 // DOM Cache
 const selectEmployee = document.getElementById('select-employee');
@@ -44,9 +44,7 @@ const tableWorkflowsBody = document.getElementById('table-workflows-body');
 const terminalStream = document.getElementById('terminal-stream');
 const logCounter = document.getElementById('log-counter');
 
-const dbTabSql = document.getElementById('db-tab-sql');
-const dbSqlPane = document.getElementById('db-sql-pane');
-const sqlConsoleView = document.getElementById('sql-console-view');
+const dbInspectorTableWrapper = document.getElementById('db-inspector-table-wrapper');
 
 const notifCenter = document.getElementById('notif-center');
 const notifBadge = document.getElementById('notif-badge');
@@ -54,7 +52,7 @@ const btnReset = document.getElementById('btn-reset');
 const toastContainer = document.getElementById('toast-container');
 
 // -------------------------------------------------------------
-// INITIALIZATION & TAB CONTROLS
+// INITIALIZATION & EVENT LISTENERS
 // -------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -68,8 +66,16 @@ function setupEventListeners() {
   tabDatabase.addEventListener('click', () => switchTab('database'));
   tabLabs.addEventListener('click', () => switchTab('labs'));
 
-  // Database Inspector Tabs
-  dbTabSql.addEventListener('click', () => switchDbTab('sql'));
+  // Database Inspector Sidebar Table Tabs
+  const dbTabButtons = document.querySelectorAll('.db-tabs-sidebar .db-tab-btn');
+  dbTabButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      dbTabButtons.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      activeTableTab = e.target.getAttribute('data-table');
+      renderDBInspectors();
+    });
+  });
 
   // Role Swap Listener
   selectEmployee.addEventListener('change', (e) => {
@@ -77,6 +83,7 @@ function setupEventListeners() {
     updateActiveProfile();
     renderWorkflows();
     showToast('info', `Swapped active student role to ${state.employees.find(emp => emp.id === currentEmployeeId).name}`);
+    fetchState(false); // Trigger fetch and dynamic read routing path animation
   });
 
   // Request Form Submit
@@ -112,16 +119,17 @@ function switchTab(target) {
   }
 }
 
-function switchDbTab(target) {
-  activeDbTab = 'sql';
-  dbTabSql.classList.add('active');
-  dbSqlPane.style.display = 'block';
-  renderDBInspectors();
-}
-
 // -------------------------------------------------------------
 // RECOVERY & DATA FETCHING
 // -------------------------------------------------------------
+
+function getProfileRegion(employeeId) {
+  const emp = state.employees.find(e => e.id === employeeId);
+  if (emp && emp.country !== 'US') {
+    return 'eu';
+  }
+  return 'us';
+}
 
 async function fetchState(initSelector = false) {
   try {
@@ -138,153 +146,136 @@ async function fetchState(initSelector = false) {
     renderLogs();
     renderNotificationsBadge();
     
-    if (panelDatabase.classList.contains('active')) {
-      renderDBInspectors();
+    if (!initSelector) {
+      const region = getProfileRegion(currentEmployeeId);
+      const routingStatus = res.headers.get('X-Region-Routing-Status');
+      triggerReadAnimation(region, routingStatus);
     }
   } catch (err) {
-    console.error('Failed to sync system state:', err);
-    showToast('error', 'Connectivity issue: Failed to sync with backend server.');
+    console.error('Fetch state error:', err);
+    showToast('error', 'Failed to retrieve cluster status.');
   }
 }
 
+function triggerReadAnimation(region, routingStatus) {
+  (async () => {
+    await animatePacket('browser', 'gclb');
+    if (region === 'us') {
+      await animatePacket('gclb', 'fe-us');
+      await animatePacket('fe-us', 'db-us');
+    } else {
+      await animatePacket('gclb', 'fe-eu');
+      if (routingStatus === 'CROSS_ATLANTIC_HOP_DETECTED') {
+        await animatePacket('fe-eu', 'db-us'); // Transatlantic Hop!
+      } else {
+        await animatePacket('fe-eu', 'db-eu'); // Local Read Replica!
+      }
+    }
+  })();
+}
+
+// -------------------------------------------------------------
+// RENDERERS & POPULATORS
+// -------------------------------------------------------------
+
 function populateEmployeeSelector() {
   selectEmployee.innerHTML = '';
-  state.employees.forEach(emp => {
+  state.employees.forEach(e => {
     const opt = document.createElement('option');
-    opt.value = emp.id;
-    opt.textContent = `${emp.name} (${emp.sector} - ${emp.role})`;
+    opt.value = e.id;
+    opt.innerText = `${e.name} (${e.sector} - ${e.role})`;
     selectEmployee.appendChild(opt);
   });
   selectEmployee.value = currentEmployeeId;
 }
 
-// -------------------------------------------------------------
-// UI RENDERING
-// -------------------------------------------------------------
-
 function updateActiveProfile() {
-  const employee = state.employees.find(e => e.id === currentEmployeeId);
-  if (!employee) return;
+  const emp = state.employees.find(e => e.id === currentEmployeeId);
+  const bal = state.accrualBalances.find(b => b.employee_id === currentEmployeeId);
 
-  profileAvatar.textContent = employee.name.split(' ').map(n => n[0]).join('');
-  profileName.textContent = employee.name;
-  profileRole.textContent = employee.role;
+  if (!emp || !bal) return;
+
+  profileAvatar.innerText = emp.name.charAt(0);
+  profileName.innerText = emp.name;
+  profileRole.innerText = `${emp.role} (${emp.sector})`;
 
   // Badges
   profileBadges.innerHTML = `
-    <span class="badge badge-sector">${employee.sector}</span>
-    <span class="badge badge-country">ISO-${employee.country}</span>
+    <span class="badge badge-sector">${emp.sector}</span>
+    <span class="badge badge-country">ISO-${emp.country}</span>
   `;
 
   // Balances
-  const balance = state.accrualBalances.find(b => b.employee_id === currentEmployeeId);
-  if (balance) {
-    balAccrued.textContent = balance.accrued_days;
-    balRollover.textContent = balance.rollover_days;
-    balUsed.textContent = balance.used_days;
-    
-    const net = (balance.accrued_days + balance.rollover_days) - balance.used_days;
-    balNet.textContent = net;
-  }
+  balAccrued.innerText = bal.accrued_days;
+  balRollover.innerText = bal.rollover_days;
+  balUsed.innerText = bal.used_days;
   
-  checkLiveRules();
+  const net = (bal.accrued_days + bal.rollover_days) - bal.used_days;
+  balNet.innerText = net;
 }
 
 function renderWorkflows() {
   tableWorkflowsBody.innerHTML = '';
-  
-  if (state.workflows.length === 0) {
-    tableWorkflowsBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No time-off requests are active in the AlloyDB database.</td></tr>`;
-    return;
-  }
 
   state.workflows.forEach(w => {
     const tr = document.createElement('tr');
     
-    // Check if the current user has authority to act on this request
-    const employee = state.employees.find(e => e.id === currentEmployeeId);
+    // Status Badge Styling
+    let statusClass = 'badge-pending';
+    if (w.status === 'approved') statusClass = 'badge-approved';
+    if (w.status === 'rejected') statusClass = 'badge-rejected';
+
+    // Check if manager is viewing and this is pending review
+    const empProfile = state.employees.find(e => e.id === currentEmployeeId);
+    const isManager = empProfile ? empProfile.id === w.approval_chain[0] : false;
     const isPending = w.status === 'pending';
-    const canAction = isPending && (
-      // Manager chain check
-      (employee && employee.id === 'emp_102' && w.employee_id === 'emp_101') || // Bob approves Alice
-      (employee && employee.id === 'emp_202' && w.employee_id === 'emp_201') || // David approves Clara
-      (employee && employee.id === 'emp_302' && w.employee_id === 'emp_301') || // Fiona approves Edward
-      // Override or fallback for classroom demo to allow managers to approve anything if escalated
-      (employee && ['emp_102', 'emp_202', 'emp_302'].includes(employee.id) && w.current_step === 'vp_review')
-    );
 
-    let statusLabel = `<span class="status-chip status-pending">Pending</span>`;
-    if (w.status === 'approved') statusLabel = `<span class="status-chip status-approved">Approved</span>`;
-    if (w.status === 'rejected') statusLabel = `<span class="status-chip status-rejected">Rejected</span>`;
-
-    let stepLabel = `<code style="font-size: 0.75rem;">completed</code>`;
-    if (w.current_step === 'manager_review') stepLabel = `<code style="color: var(--warning); font-size: 0.75rem;">manager_review</code>`;
-    if (w.current_step === 'vp_review') stepLabel = `<code style="color: var(--danger); font-size: 0.75rem;">escalated_vp_review</code>`;
+    let actionsHtml = `<span style="font-size: 0.75rem; color: var(--text-muted);">Archive locked</span>`;
+    if (isPending && isManager) {
+      actionsHtml = `
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+          <button class="btn btn-small" onclick="handleWorkflowAction('${w.id}', 'approve')">Approve</button>
+          <button class="btn btn-secondary btn-small" onclick="handleWorkflowAction('${w.id}', 'reject')">Reject</button>
+        </div>
+      `;
+    } else if (isPending && !isManager) {
+      actionsHtml = `<span class="badge-pending" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">Awaiting Manager</span>`;
+    }
 
     tr.innerHTML = `
-      <td style="font-family: var(--font-mono); font-size: 0.8rem; font-weight:600;">${w.id}</td>
-      <td>
-        <div style="font-weight:600;">${w.employee_name}</div>
-        <div style="font-size:0.75rem; color:var(--text-secondary);">${w.employee_id}</div>
-      </td>
-      <td><span class="badge badge-sector" style="font-size:0.65rem;">${w.sector}</span></td>
-      <td>
-        <div style="font-size: 0.85rem;">${w.start_date} to ${w.end_date}</div>
-        <div style="font-size: 0.75rem; color:var(--text-muted); font-style:italic;">"${w.reason}"</div>
-      </td>
-      <td style="font-weight: 700; text-align: center;">${w.days_requested}</td>
-      <td>${statusLabel}</td>
-      <td>${stepLabel}</td>
-      <td style="text-align: right; white-space: nowrap;">
-        ${canAction ? `
-          <button class="btn btn-approve" data-id="${w.id}" style="display:inline-flex; width:auto; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: var(--success); box-shadow: none; border-radius:4px; margin-right:0.3rem;">Approve</button>
-          <button class="btn btn-reject" data-id="${w.id}" style="display:inline-flex; width:auto; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: var(--danger); box-shadow: none; border-radius:4px;">Reject</button>
-        ` : `
-          <span style="font-size: 0.75rem; color: var(--text-muted);">${w.status === 'pending' ? 'Manager review' : 'Archive locked'}</span>
-        `}
-      </td>
+      <td><code>${w.id}</code></td>
+      <td><strong>${w.employee_name}</strong></td>
+      <td><span class="badge badge-sector">${w.sector}</span></td>
+      <td>${w.start_date} to ${w.end_date}</td>
+      <td>${w.days_requested}</td>
+      <td><span class="status-badge ${statusClass}">${w.status.toUpperCase()}</span></td>
+      <td><code>${w.current_step}</code></td>
+      <td style="text-align: right;">${actionsHtml}</td>
     `;
-
     tableWorkflowsBody.appendChild(tr);
-  });
-
-  // Attach Action Button Listeners
-  document.querySelectorAll('.btn-approve').forEach(btn => {
-    btn.addEventListener('click', () => handleWorkflowAction(btn.dataset.id, 'approve'));
-  });
-  document.querySelectorAll('.btn-reject').forEach(btn => {
-    btn.addEventListener('click', () => handleWorkflowAction(btn.dataset.id, 'reject'));
   });
 }
 
 function renderLogs() {
   terminalStream.innerHTML = '';
-  logCounter.textContent = `${state.logs.length} operations logged`;
+  logCounter.innerText = `${state.logs.length} operations logged`;
 
   state.logs.forEach(log => {
     const div = document.createElement('div');
-    div.className = `log-entry log-${log.type}`;
-    
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'log-time';
-    timeSpan.textContent = log.timestamp.split('T')[1].substring(0, 8); // hh:mm:ss
-
-    const msgSpan = document.createElement('span');
-    // Simple query formatting if it is SQL / Firestore logs
-    msgSpan.textContent = log.message;
-
-    div.appendChild(timeSpan);
-    div.appendChild(msgSpan);
+    div.className = `log-line log-${log.type}`;
+    div.innerHTML = `
+      <span class="log-time">[${new Date(log.timestamp).toLocaleTimeString()}]</span>
+      <span class="log-message">${log.message}</span>
+    `;
     terminalStream.appendChild(div);
   });
 }
 
 function renderNotificationsBadge() {
-  // Count unread notifications for currently active employee
   const count = state.notifications.filter(n => n.user_id === currentEmployeeId && !n.read).length;
   if (count > 0) {
-    notifBadge.textContent = count;
-    notifBadge.style.display = 'flex';
+    notifBadge.innerText = count;
+    notifBadge.style.display = 'block';
   } else {
     notifBadge.style.display = 'none';
   }
@@ -305,10 +296,17 @@ async function handleRequestSubmit(e) {
   };
 
   try {
-    // 1. Trigger SVG Packet Animation through security gateway: Browser -> GCLB -> Frontend -> Backend
+    const region = getProfileRegion(currentEmployeeId);
+    
+    // 1. Animate Browser -> GCLB
     await animatePacket('browser', 'gclb');
-    await animatePacket('gclb', 'fe');
-    await animatePacket('fe', 'be');
+    
+    // 2. Animate GCLB to regional Cloud Run
+    if (region === 'us') {
+      await animatePacket('gclb', 'fe-us');
+    } else {
+      await animatePacket('gclb', 'fe-eu');
+    }
 
     const res = await fetch('/api/requests', {
       method: 'POST',
@@ -323,16 +321,18 @@ async function handleRequestSubmit(e) {
       return;
     }
 
-    // 2. Trigger downstream DB pipeline animation
-    await animatePacket('be', 'db');
+    // 3. Animate Cloud Run Frontend to database (Writes go to US Primary!)
+    if (region === 'us') {
+      await animatePacket('fe-us', 'db-us');
+    } else {
+      await animatePacket('fe-eu', 'db-us');
+    }
 
-    // Success actions
     showToast('success', `Success: Vacation request ${data.requestId} has been submitted!`);
     formRequest.reset();
     ruleWarnPane.innerHTML = '';
     
-    // Sync state
-    await fetchState();
+    await fetchState(false);
   } catch (err) {
     console.error('Submit API connection failed:', err);
     showToast('error', 'Backend Core is unreachable.');
@@ -341,10 +341,14 @@ async function handleRequestSubmit(e) {
 
 async function handleWorkflowAction(requestId, action) {
   try {
-    // FE -> BE security gateway animation
+    const region = getProfileRegion(currentEmployeeId);
+
     await animatePacket('browser', 'gclb');
-    await animatePacket('gclb', 'fe');
-    await animatePacket('fe', 'be');
+    if (region === 'us') {
+      await animatePacket('gclb', 'fe-us');
+    } else {
+      await animatePacket('gclb', 'fe-eu');
+    }
 
     const res = await fetch(`/api/requests/${requestId}/action`, {
       method: 'POST',
@@ -361,11 +365,15 @@ async function handleWorkflowAction(requestId, action) {
       return;
     }
 
-    // DB updates trigger
-    await animatePacket('be', 'db');
+    // Action committed - animate Cloud Run to US DB Primary
+    if (region === 'us') {
+      await animatePacket('fe-us', 'db-us');
+    } else {
+      await animatePacket('fe-eu', 'db-us');
+    }
 
     showToast('success', `Workflow committed: ${requestId} status updated to ${action.toUpperCase()}.`);
-    await fetchState();
+    await fetchState(false);
   } catch (err) {
     console.error('Workflow update failed:', err);
     showToast('error', 'Failed to submit workflow resolution.');
@@ -378,7 +386,7 @@ async function handleReset() {
     const data = await res.json();
     if (res.ok) {
       showToast('info', 'System reset: Clean DB structures deployed.');
-      currentEmployeeId = 'emp_101'; // restore alice
+      currentEmployeeId = 'emp_101'; // restore Alice
       await fetchState(true);
     }
   } catch (err) {
@@ -471,7 +479,6 @@ function checkLiveRules() {
     }
   }
 
-  // If we made it here, everything is clear!
   renderRuleNotice('info', `Valid Request: Evaluated ${reqDays} business days. No severe blackout flags detected.`);
 }
 
@@ -486,7 +493,7 @@ function renderRuleNotice(type, text) {
 }
 
 // -------------------------------------------------------------
-// HELPER ARITHMETIC
+// HELPER MATH
 // -------------------------------------------------------------
 
 function calculateBusinessDays(start, end) {
@@ -509,53 +516,162 @@ function datesOverlap(start1, end1, start2, end2) {
 }
 
 // -------------------------------------------------------------
-// DATABASE INSPECTOR SYNTAX HIGHLIGHTING
+// DB INSPECTOR HIGH-FIDELITY HTML RENDERER
 // -------------------------------------------------------------
 
 function renderDBInspectors() {
-  let html = `<b style="color:var(--text-secondary)">-- AlloyDB Relational Console Output</b>\n\n`;
+  if (!dbInspectorTableWrapper) return;
   
-  // TABLE: employees
-  html += `<span style="color:var(--text-muted)">SELECT * FROM employees;</span>\n`;
-  html += `+---------+-------------------+------------+---------+--------------------+-----------------------+\n`;
-  html += `| ID      | Name              | Sector     | Country | Dept ID            | Email                 |\n`;
-  html += `+---------+-------------------+------------+---------+--------------------+-----------------------+\n`;
-  state.employees.forEach(e => {
-    html += `| ${e.id.padEnd(7)} | ${e.name.padEnd(17)} | ${e.sector.padEnd(10)} | ${e.country.padEnd(7)} | ${e.department_id.padEnd(18)} | ${e.email.padEnd(21)} |\n`;
-  });
-  html += `+---------+-------------------+------------+---------+--------------------+-----------------------+\n\n`;
-
-  // TABLE: accrual_balances
-  html += `<span style="color:var(--text-muted)">SELECT * FROM accrual_balances;</span>\n`;
-  html += `+-------------+------+-----------+--------------+-----------+----------------+\n`;
-  html += `| Employee ID | Year | Base Days | Accrued Days | Used Days | Rollover Days  |\n`;
-  html += `+-------------+------+-----------+--------------+-----------+----------------+\n`;
-  state.accrualBalances.forEach(b => {
-    html += `| ${b.employee_id.padEnd(11)} | ${b.year} | ${b.base_days.toString().padEnd(9)} | ${b.accrued_days.toString().padEnd(12)} | ${b.used_days.toString().padEnd(9)} | ${b.rollover_days.toString().padEnd(14)} |\n`;
-  });
-  html += `+-------------+------+-----------+--------------+-----------+----------------+\n\n`;
-
-  // TABLE: workflows
-  html += `<span style="color:var(--text-muted)">SELECT * FROM workflows;</span>\n`;
-  html += `+-------------+--------------------+----------------+--------------+------------------+-----------------+\n`;
-  html += `| Request ID  | Employee Name      | Sector         | Date Range   | Days Requested   | Status          |\n`;
-  html += `+-------------+--------------------+----------------+--------------+------------------+-----------------+\n`;
-  state.workflows.forEach(w => {
-    html += `| ${w.id.padEnd(11)} | ${w.employee_name.padEnd(18)} | ${w.sector.padEnd(14)} | ${w.start_date.padEnd(12)} | ${w.days_requested.toString().padEnd(16)} | ${w.status.padEnd(15)} |\n`;
-  });
-  html += `+-------------+--------------------+----------------+--------------+------------------+-----------------+\n\n`;
-
-  // TABLE: notifications
-  html += `<span style="color:var(--text-muted)">SELECT * FROM notifications;</span>\n`;
-  html += `+-------------+-------------+-------------------------------------------------------------+-------+\n`;
-  html += `| Notif ID    | User ID     | Message                                                     | Read  |\n`;
-  html += `+-------------+-------------+-------------------------------------------------------------+-------+\n`;
-  state.notifications.forEach(n => {
-    html += `| ${n.id.padEnd(11)} | ${n.user_id.padEnd(11)} | ${n.message.substring(0, 58).padEnd(59)} | ${n.read.toString().padEnd(5)} |\n`;
-  });
-  html += `+-------------+-------------+-------------------------------------------------------------+-------+\n`;
-
-  sqlConsoleView.innerHTML = html;
+  let html = '';
+  
+  if (activeTableTab === 'employees') {
+    html = `
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Sector</th>
+            <th>Country</th>
+            <th>Dept ID</th>
+            <th>Role</th>
+            <th>Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.employees.map(e => `
+            <tr>
+              <td><code>${e.id}</code></td>
+              <td><strong>${e.name}</strong></td>
+              <td><span class="badge badge-sector">${e.sector}</span></td>
+              <td><span class="badge badge-country">ISO-${e.country}</span></td>
+              <td><code>${e.department_id || 'NULL'}</code></td>
+              <td>${e.role}</td>
+              <td><a href="mailto:${e.email}" style="color:var(--primary); text-decoration:none;">${e.email}</a></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } else if (activeTableTab === 'accrual_balances') {
+    html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Employee ID</th>
+            <th>Year</th>
+            <th>Base Days</th>
+            <th>Accrued Days</th>
+            <th>Used Days</th>
+            <th>Rollover Days</th>
+            <th>Net Available</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.accrualBalances.map(b => {
+            const net = (b.accrued_days + b.rollover_days) - b.used_days;
+            return `
+              <tr>
+                <td><code>${b.employee_id}</code></td>
+                <td>${b.year}</td>
+                <td>${b.base_days}</td>
+                <td>${b.accrued_days}</td>
+                <td>${b.used_days}</td>
+                <td>${b.rollover_days}</td>
+                <td><strong style="color:var(--success);">${net}</strong></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  } else if (activeTableTab === 'departments') {
+    html = `
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Sector</th>
+            <th>Head ID</th>
+            <th>Total Staff</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.departments.map(d => `
+            <tr>
+              <td><code>${d.id}</code></td>
+              <td><strong>${d.name}</strong></td>
+              <td><span class="badge badge-sector">${d.sector}</span></td>
+              <td><code>${d.head_id}</code></td>
+              <td>${d.total_staff}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } else if (activeTableTab === 'workflows') {
+    html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Req ID</th>
+            <th>Employee</th>
+            <th>Sector</th>
+            <th>Dates Requested</th>
+            <th>Days</th>
+            <th>Status</th>
+            <th>Next Step</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.workflows.map(w => {
+            let statusClass = 'badge-pending';
+            if (w.status === 'approved') statusClass = 'badge-approved';
+            if (w.status === 'rejected') statusClass = 'badge-rejected';
+            return `
+              <tr>
+                <td><code>${w.id}</code></td>
+                <td><strong>${w.employee_name}</strong></td>
+                <td><span class="badge badge-sector">${w.sector}</span></td>
+                <td>${w.start_date} to ${w.end_date}</td>
+                <td>${w.days_requested}</td>
+                <td><span class="status-badge ${statusClass}">${w.status.toUpperCase()}</span></td>
+                <td><code>${w.current_step}</code></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  } else if (activeTableTab === 'notifications') {
+    html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Notif ID</th>
+            <th>User ID</th>
+            <th>Message</th>
+            <th>Read</th>
+            <th>Created At</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.notifications.map(n => `
+            <tr style="${n.read ? 'opacity: 0.6;' : 'font-weight: 600;'}">
+              <td><code>${n.id}</code></td>
+              <td><code>${n.user_id}</code></td>
+              <td>${n.message}</td>
+              <td><span class="badge ${n.read ? 'badge-sector' : 'badge-approved'}">${n.read ? 'READ' : 'UNREAD'}</span></td>
+              <td>${new Date(n.created_at).toLocaleString()}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  dbInspectorTableWrapper.innerHTML = html;
 }
 
 // -------------------------------------------------------------
@@ -574,7 +690,6 @@ function showToast(type, text) {
   toast.innerHTML = `<span>${icon}</span> <span>${text}</span>`;
   toastContainer.appendChild(toast);
 
-  // auto clear in 4 seconds
   setTimeout(() => {
     toast.style.animation = 'slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) reverse forwards';
     setTimeout(() => {
@@ -605,7 +720,6 @@ function animatePacket(fromNode, toNode) {
       return;
     }
 
-    // Set style and restart animation
     packet.style.opacity = '1';
     
     const pathLen = path.getTotalLength();
@@ -617,7 +731,6 @@ function animatePacket(fromNode, toNode) {
       const progress = timestamp - startTime;
       const percentage = Math.min(progress / duration, 1);
 
-      // Get point along the path
       const currentPoint = path.getPointAtLength(percentage * pathLen);
       packet.setAttribute('cx', currentPoint.x);
       packet.setAttribute('cy', currentPoint.y);

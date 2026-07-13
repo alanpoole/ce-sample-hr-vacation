@@ -9,7 +9,9 @@
     "test": "jest"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pg": "^8.11.3",
+    "redis": "^4.6.12"
   },
   "devDependencies": {
     "jest": "^29.7.0",

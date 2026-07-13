@@ -3,7 +3,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = ">= 5.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = ">= 5.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -13,6 +17,12 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+  region  = var.region
+  zone    = var.zone
+}
+
+provider "google-beta" {
   project = var.project_id
   region  = var.region
   zone    = var.zone
@@ -175,14 +185,6 @@ resource "google_cloud_run_v2_service" "app_service" {
   }
 }
 
-# Allow IAM invocation for GCLB / Authenticated proxy requests
-resource "google_cloud_run_v2_service_iam_member" "app_public" {
-  name     = google_cloud_run_v2_service.app_service.name
-  location = google_cloud_run_v2_service.app_service.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
-
 # -------------------------------------------------------------
 # 6. GLOBAL EXTERNAL LOAD BALANCER (GCLB)
 # -------------------------------------------------------------
@@ -207,6 +209,12 @@ resource "google_compute_backend_service" "backend_service" {
   backend {
     group = google_compute_region_network_endpoint_group.serverless_neg.id
   }
+
+  iap {
+    enabled              = true
+    oauth2_client_id     = google_iap_client.project_client.client_id
+    oauth2_client_secret = google_iap_client.project_client.secret
+  }
 }
 
 # Global URL Map mapping GCLB incoming paths to the serverless backend
@@ -221,6 +229,10 @@ resource "google_compute_target_http_proxy" "http_proxy" {
   url_map = google_compute_url_map.url_map.id
 }
 
+resource "google_compute_global_address" "lb_ip" {
+  name = "hr-vacation-lb-ip"
+}
+
 # Global HTTP Forwarding Rule
 resource "google_compute_global_forwarding_rule" "http_forwarding_rule" {
   name                  = "hr-vacation-http-forwarding-rule"
@@ -228,6 +240,13 @@ resource "google_compute_global_forwarding_rule" "http_forwarding_rule" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "80"
   target                = google_compute_target_http_proxy.http_proxy.id
+  ip_address            = google_compute_global_address.lb_ip.address
+
+  lifecycle {
+    replace_triggered_by = [
+      google_compute_global_address.lb_ip
+    ]
+  }
 }
 
 # Cryptographic resources for Load Balancer SSL Termination
@@ -240,9 +259,13 @@ resource "tls_self_signed_cert" "cert" {
   private_key_pem = tls_private_key.key.private_key_pem
 
   subject {
-    common_name  = "hr-vacation.gcp-lab.internal"
+    common_name  = "hr-vacation.${google_compute_global_address.lb_ip.address}.nip.io"
     organization = "Google Cloud Lab Classroom"
   }
+
+  dns_names = [
+    "hr-vacation.${google_compute_global_address.lb_ip.address}.nip.io",
+  ]
 
   validity_period_hours = 8760 # 1 year
 
@@ -254,9 +277,13 @@ resource "tls_self_signed_cert" "cert" {
 }
 
 resource "google_compute_ssl_certificate" "self_signed" {
-  name        = "hr-vacation-self-signed-cert"
+  name_prefix = "hr-vac-cert-"
   private_key = tls_private_key.key.private_key_pem
   certificate = tls_self_signed_cert.cert.cert_pem
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Target HTTPS Proxy for SSL termination at GCLB
@@ -273,8 +300,15 @@ resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "443"
   target                = google_compute_target_https_proxy.https_proxy.id
+  ip_address            = google_compute_global_address.lb_ip.address
+
+  lifecycle {
+    replace_triggered_by = [
+      google_compute_global_address.lb_ip
+    ]
+  }
+}# Outputs
+output "load_balancer_ip" {
+  value       = google_compute_global_address.lb_ip.address
+  description = "The global Anycast IP address of the External Load Balancer."
 }
-
-
-
-

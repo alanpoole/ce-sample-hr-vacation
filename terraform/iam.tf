@@ -19,4 +19,20 @@
 data "google_compute_default_service_account" "default" {
 }
 
-# Redundant IAM binding removed. Service account storage admin permissions are managed via bootstrap CLI.
+resource "google_project_iam_member" "compute_storage_admin" {
+  project = var.project_id
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${data.google_compute_default_service_account.default.email}"
+}
+
+resource "google_project_iam_member" "compute_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${data.google_compute_default_service_account.default.email}"
+}
+
+resource "google_project_iam_member" "compute_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${data.google_compute_default_service_account.default.email}"
+}

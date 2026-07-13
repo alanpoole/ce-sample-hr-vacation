@@ -13,7 +13,6 @@
   <header>
     <div class="logo-container">
       <div class="logo-icon">
-        <!-- Calendar Check SVG -->
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm-9-3l-3-3 1.41-1.41L10 14.17l5.59-5.59L17 10l-7 7z"/></svg>
       </div>
       <div>
@@ -32,7 +31,6 @@
 
     <!-- Reset Simulation Command -->
     <div style="display: flex; gap: 1rem; align-items: center;">
-      <!-- Notification Center -->
       <div class="notification-bell" id="notif-center" title="Notifications">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
         <span class="notification-badge" id="notif-badge" style="display: none;">0</span>
@@ -70,9 +68,7 @@
               <div class="profile-role" id="profile-role">-</div>
             </div>
           </div>
-          <div class="profile-badges" id="profile-badges">
-            <!-- Badges updated via app.js -->
-          </div>
+          <div class="profile-badges" id="profile-badges"></div>
           <div class="balance-grid">
             <div class="balance-box">
               <div class="balance-val" id="bal-accrued">0</div>
@@ -114,7 +110,6 @@
             <textarea id="input-reason" class="custom-textarea" rows="2" placeholder="Describe context for your audit..." required></textarea>
           </div>
 
-          <!-- Live Rule Warn Pane -->
           <div id="rule-warn-pane"></div>
 
           <button type="submit" class="btn" id="btn-submit-req">
@@ -130,20 +125,16 @@
 
       <!-- PANEL 1: SIMULATION WORKSPACE -->
       <section class="tab-panel active" id="panel-simulate">
-        
-        <!-- Live Cloud Visualizer Grid -->
         <div class="viz-grid">
           
           <!-- Cloud Topology SVG Panel -->
           <div class="glass-card" style="padding: 1rem; display: flex; flex-direction: column;">
             <h2 class="card-title" style="margin-bottom: 0.5rem; font-size: 1rem;">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
-              Google Cloud Live Traffic Visualizer
+              Google Cloud Multi-Region Live Traffic Visualizer
             </h2>
             <div class="viz-diagram" id="diagram-container">
-              <!-- SVG DIAGRAM -->
               <svg class="diagram-svg" viewBox="0 0 600 400">
-                <!-- Gradients -->
                 <defs>
                   <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="hsl(263, 90%, 51%)" />
@@ -155,61 +146,89 @@
                   </linearGradient>
                 </defs>
 
-                <!-- Private VPC boundary box -->
-                <rect x="15" y="100" width="570" height="280" rx="15" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" stroke-dasharray="6,4" />
-                <text x="30" y="125" fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)" letter-spacing="1">PRIVATE VPC BOUNDARY</text>
+                <!-- Left VPC Box: us-central1 -->
+                <rect x="15" y="140" width="275" height="245" rx="10" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" stroke-dasharray="6,4" />
+                <text x="30" y="160" fill="var(--text-muted)" font-size="9" font-family="var(--font-mono)" letter-spacing="1">REGION: us-central1 (US)</text>
 
-                <!-- Interconnect / Communication Pathways -->
+                <!-- Right VPC Box: europe-west1 -->
+                <rect x="310" y="140" width="275" height="245" rx="10" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" stroke-dasharray="6,4" />
+                <text x="325" y="160" fill="var(--text-muted)" font-size="9" font-family="var(--font-mono)" letter-spacing="1">REGION: europe-west1 (EU)</text>
+
+                <!-- Interconnect pathways -->
                 <!-- Browser to GCLB -->
-                <path id="path-browser-gclb" d="M 60 55 L 195 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- GCLB to Frontend -->
-                <path id="path-gclb-fe" d="M 195 55 L 495 55" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- Frontend to Backend -->
-                <path id="path-fe-be" d="M 495 55 Q 430 180 300 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
-                <!-- Backend to AlloyDB Cluster -->
-                <path id="path-be-db" d="M 300 180 L 300 300" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <path id="path-browser-gclb" d="M 300 40 L 300 90" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                
+                <!-- GCLB to regional Frontends -->
+                <path id="path-gclb-fe-us" d="M 300 90 L 150 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+                <path id="path-gclb-fe-eu" d="M 300 90 L 450 180" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+
+                <!-- Frontends to Databases -->
+                <!-- US Cloud Run -> Primary AlloyDB -->
+                <path id="path-fe-db-us" d="M 150 180 L 150 320" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+
+                <!-- EU Cloud Run -> Local EU Read Replica -->
+                <path id="path-fe-db-eu-local" d="M 450 180 L 450 320" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="2" />
+
+                <!-- EU Cloud Run -> Cross-region US Primary (Transatlantic Hop!) -->
+                <path id="path-fe-db-eu-cross" d="M 450 180 L 150 320" fill="none" stroke="hsl(217, 32%, 18%)" stroke-width="1.5" stroke-dasharray="4,4" />
+
+                <!-- DB Storage log replication link -->
+                <path id="path-db-replication" d="M 150 320 L 450 320" fill="none" stroke="hsl(280, 85%, 30%)" stroke-width="1.5" stroke-dasharray="3,3" />
 
                 <!-- 1. Node: User Browser (External) -->
-                <g class="svg-node" transform="translate(60, 55)" id="node-browser">
-                  <rect x="-40" y="-20" width="80" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
-                  <text x="0" y="4" fill="var(--text-primary)" font-size="10" font-weight="600" text-anchor="middle">Browser</text>
-                  <text x="0" y="15" fill="var(--text-muted)" font-size="7" text-anchor="middle">Client App</text>
+                <g class="svg-node" transform="translate(300, 40)" id="node-browser">
+                  <rect x="-40" y="-15" width="80" height="30" rx="4" fill="var(--bg-input)" stroke="var(--border-color)" stroke-width="1" />
+                  <text x="0" y="2" fill="var(--text-primary)" font-size="9" font-weight="600" text-anchor="middle">Browser</text>
+                  <text x="0" y="11" fill="var(--text-muted)" font-size="6.5" text-anchor="middle">Client App</text>
                 </g>
 
                 <!-- 2. Node: Global Load Balancer (GCLB) -->
-                <g class="svg-node" transform="translate(195, 55)" id="node-gclb">
-                  <rect x="-50" y="-20" width="100" height="40" rx="6" fill="url(#gclbGrad)" stroke="hsl(200, 100%, 50%)" stroke-width="1.5" />
-                  <text x="0" y="2" fill="white" font-size="10" font-weight="700" text-anchor="middle">GCLB</text>
-                  <text x="0" y="13" fill="hsla(0, 0%, 100%, 0.9)" font-size="7.5" font-family="var(--font-sans)" text-anchor="middle">Global Balancer</text>
+                <g class="svg-node" transform="translate(300, 90)" id="node-gclb">
+                  <rect x="-45" y="-15" width="90" height="30" rx="4" fill="url(#gclbGrad)" stroke="hsl(200, 100%, 50%)" stroke-width="1.5" />
+                  <text x="0" y="2" fill="white" font-size="9" font-weight="700" text-anchor="middle">GCLB</text>
+                  <text x="0" y="11" fill="hsla(0, 0%, 100%, 0.9)" font-size="6.5" text-anchor="middle">Anycast Balancer</text>
                 </g>
 
-                <!-- 4. Node: Frontend Service (Cloud Run - Ingress Locked) -->
-                <g class="svg-node" transform="translate(495, 55)" id="node-fe">
+                <!-- 3. Node: Cloud Run (FE us-central1) -->
+                <g class="svg-node" transform="translate(150, 180)" id="node-fe-us">
                   <rect x="-55" y="-20" width="110" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-focus)" stroke-width="1" />
-                  <text x="0" y="-2" fill="var(--text-primary)" font-size="10" font-weight="600" text-anchor="middle">Frontend</text>
-                  <text x="0" y="8" fill="var(--info)" font-size="7.5" text-anchor="middle">Cloud Run (FE)</text>
-                  <text x="0" y="17" fill="var(--danger)" font-size="6.5" font-weight="700" font-family="var(--font-mono)" text-anchor="middle">[INGRESS LOCKED]</text>
+                  <text x="0" y="-2" fill="var(--text-primary)" font-size="9" font-weight="600" text-anchor="middle">Cloud Run (US)</text>
+                  <text x="0" y="8" fill="var(--info)" font-size="7" text-anchor="middle">hr-vacation-app</text>
+                  <text x="0" y="16" fill="var(--text-muted)" font-size="6.5" font-family="var(--font-mono)" text-anchor="middle">us-central1</text>
                 </g>
 
-                <!-- 5. Node: Backend Core API -->
-                <g class="svg-node" transform="translate(300, 180)" id="node-be">
-                  <rect x="-65" y="-25" width="130" height="50" rx="8" fill="url(#cloudGrad)" stroke="var(--border-focus)" stroke-width="1.5" />
-                  <text x="0" y="2" fill="white" font-size="12" font-weight="700" text-anchor="middle">Backend Core</text>
-                  <text x="0" y="15" fill="hsla(0, 0%, 100%, 0.8)" font-size="8" font-family="var(--font-mono)" text-anchor="middle">Rules Engine (BE)</text>
+                <!-- 4. Node: Cloud Run (FE europe-west1) -->
+                <g class="svg-node" transform="translate(450, 180)" id="node-fe-eu">
+                  <rect x="-55" y="-20" width="110" height="40" rx="6" fill="var(--bg-input)" stroke="var(--border-focus)" stroke-width="1" />
+                  <text x="0" y="-2" fill="var(--text-primary)" font-size="9" font-weight="600" text-anchor="middle">Cloud Run (EU)</text>
+                  <text x="0" y="8" fill="var(--info)" font-size="7" text-anchor="middle">hr-vacation-app-eu</text>
+                  <text x="0" y="16" fill="var(--text-muted)" font-size="6.5" font-family="var(--font-mono)" text-anchor="middle">europe-west1</text>
                 </g>
 
-                <!-- Node: AlloyDB Resilient Cluster -->
-                <g class="svg-node" transform="translate(300, 300)" id="node-db">
-                  <rect x="-70" y="-20" width="140" height="40" rx="6" fill="var(--bg-input)" stroke="var(--primary)" stroke-width="1.5" />
-                  <text x="0" y="4" fill="var(--text-primary)" font-size="11" font-weight="600" text-anchor="middle">AlloyDB Cluster</text>
-                  <text x="0" y="15" fill="var(--primary)" font-size="8" text-anchor="middle">Active Primary (us-central1)</text>
+                <!-- 5. Node: AlloyDB Primary (US) -->
+                <g class="svg-node" transform="translate(150, 320)" id="node-db-us">
+                  <rect x="-65" y="-22" width="130" height="44" rx="6" fill="var(--bg-input)" stroke="var(--primary)" stroke-width="1.5" />
+                  <text x="0" y="-2" fill="var(--text-primary)" font-size="9.5" font-weight="600" text-anchor="middle">AlloyDB Primary</text>
+                  <text x="0" y="8" fill="var(--primary)" font-size="7" text-anchor="middle">write-db.hr-vacation.internal</text>
+                  <text x="0" y="16" fill="var(--success)" font-size="6.5" font-weight="700" text-anchor="middle">READ-WRITE</text>
                 </g>
 
-                <!-- Animated Packets -->
+                <!-- 6. Node: AlloyDB Replica (EU) -->
+                <g class="svg-node" transform="translate(450, 320)" id="node-db-eu">
+                  <rect x="-65" y="-22" width="130" height="44" rx="6" fill="var(--bg-input)" stroke="var(--primary)" stroke-width="1.2" />
+                  <text x="0" y="-2" fill="var(--text-primary)" font-size="9.5" font-weight="600" text-anchor="middle">AlloyDB Replica</text>
+                  <text x="0" y="8" fill="var(--primary)" font-size="7" text-anchor="middle">read-db-eu.hr-vacation.internal</text>
+                  <text x="0" y="16" fill="var(--info)" font-size="6.5" font-weight="700" text-anchor="middle">READ-ONLY</text>
+                </g>
+
+                <!-- Animated packets -->
                 <circle id="packet-browser-gclb-c" class="packet" />
-                <circle id="packet-gclb-fe-c" class="packet" />
-                <circle id="packet-fe-be-c" class="packet" />
-                <circle id="packet-be-db-c" class="packet" />
+                <circle id="packet-gclb-fe-us-c" class="packet" />
+                <circle id="packet-gclb-fe-eu-c" class="packet" />
+                <circle id="packet-fe-db-us-c" class="packet" />
+                <circle id="packet-fe-db-eu-local-c" class="packet" />
+                <circle id="packet-fe-db-eu-cross-c" class="packet" />
+                <circle id="packet-db-replication-c" class="packet" />
               </svg>
             </div>
           </div>
@@ -225,9 +244,7 @@
               <div style="font-weight: 500; letter-spacing: 0.05em; font-size: 0.75rem;">DATABASE TRANSACTION LOGS</div>
               <div id="log-counter" style="color: var(--text-muted); font-size: 0.7rem;">0 logs</div>
             </div>
-            <div class="terminal-logs" id="terminal-stream">
-              <!-- Logs updated via app.js -->
-            </div>
+            <div class="terminal-logs" id="terminal-stream"></div>
           </div>
         </div>
 
@@ -251,9 +268,7 @@
                   <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
-              <tbody id="table-workflows-body">
-                <!-- Populated dynamically -->
-              </tbody>
+              <tbody id="table-workflows-body"></tbody>
             </table>
           </div>
         </div>
@@ -264,19 +279,22 @@
         <div class="glass-card">
           <h2 class="card-title">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            Primary Databases Inspection Consoles
+            Primary AlloyDB Resilient Console Inspector
           </h2>
-          
-          <div class="db-tabs">
-            <button class="db-tab-btn active" id="db-tab-sql">AlloyDB Relational Output</button>
-          </div>
 
-          <div id="db-sql-pane">
-            <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
-              Tables: <code style="color: var(--primary);">employees</code>, <code style="color: var(--primary);">accrual_balances</code>, <code style="color: var(--primary);">departments</code>, <code style="color: var(--primary);">workflows</code>, <code style="color: var(--primary);">notifications</code>
+          <div class="db-tabs-container">
+            <div class="db-tabs-sidebar">
+              <button class="db-tab-btn active" data-table="employees">Employees</button>
+              <button class="db-tab-btn" data-table="accrual_balances">Accrual Balances</button>
+              <button class="db-tab-btn" data-table="departments">Departments</button>
+              <button class="db-tab-btn" data-table="workflows">Workflows</button>
+              <button class="db-tab-btn" data-table="notifications">Notifications</button>
             </div>
-            <div class="db-console" id="sql-console-view">
-              <!-- Render SQL data dynamically -->
+            
+            <div class="db-table-content">
+              <div id="db-inspector-table-wrapper" class="table-wrapper">
+                <!-- Rendered dynamically as a beautiful HTML table -->
+              </div>
             </div>
           </div>
         </div>
@@ -284,95 +302,28 @@
 
       <!-- PANEL 3: STUDENT LABS -->
       <section class="tab-panel" id="panel-labs">
-        
         <div class="glass-card">
           <h2 class="card-title" style="color: var(--border-focus);">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5.89 12.55L12 15.88l6.11-3.33c.8-.43 1.39-1.11 1.39-2V10l-7.5 4.09L4.5 10v.55c0 .89.59 1.57 1.39 2z"/></svg>
-            Student Laboratory Handouts & Challenges
+            SRE Case Scenario Investigation Handout
           </h2>
-          <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">
-            Welcome to the Time-Off Subsystem Lab! In this scenario, you are tasked with upgrading this baseline application from its single-region isolation into a globally available, fault-tolerant infrastructure pattern. Use these challenges to practice drafting production-ready cloud components.
-          </p>
-
-          <!-- LAB 1 -->
-          <div class="glass-card lab-card">
-            <div class="lab-meta">
-              <span class="lab-badge lab-easy">GCP ARCHITECT</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 20 mins</span>
-            </div>
-            <h3 class="lab-title">Challenge 1: Scale Reads Locally with AlloyDB Read Pool</h3>
-            <p class="lab-desc">
-              The initial AlloyDB deployment starts with a single primary instance inside <code>us-central1</code> to minimize dev costs. As user traffic scales up across international subsidiaries, upgrade your primary cluster by adding a stateless, high-performance Read Pool instance in the primary region using Terraform. This enables shared-storage local read scaling with zero data copy latency.
+          
+          <div class="glass-card lab-card" style="border-left: 4px solid var(--danger); background: hsla(354, 70%, 54%, 0.04);">
+            <h3 class="lab-title" style="font-size: 1.15rem; color: var(--danger); margin-bottom: 0.75rem;">Incident Report: Cymbal HR Vacation Subsystem Outages</h3>
+            <p style="color: var(--text-primary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1.25rem;">
+              <strong>SRE Scenario Prompt:</strong> As a Google Cloud SRE expert, you have received alerts that a recent application code release is causing high latency and intermittent connection errors. Your role is to investigate, locate, and resolve these errors across the infrastructure and application tiers.
             </p>
-            <div class="form-group">
-              <label>Review target IaC architecture upgrade template</label>
-              <pre class="lab-code"><code>resource "google_alloydb_instance" "read_pool" {
-  cluster       = google_alloydb_cluster.primary.name
-  instance_id   = "hr-vacation-read-pool"
-  instance_type = "READ_POOL"
-
-  read_pool_config {
-    node_count = 1
-  }
-
-  machine_config {
-    cpu_count = 2
-  }
-}</code></pre>
+            <div class="sre-alert-info">
+              <h4 style="font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.5rem;">Symptom Log Summary:</h4>
+              <ul style="padding-left: 1.2rem; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">
+                <li>European client requests load with extreme response latency (~850ms, SLA target &lt; 50ms).</li>
+                <li>Database connection exhaustion faults (HTTP 500 code <code>ERR_DB_CONNECTION_EXHAUSTED</code>) are triggered in Cloud Logging after moderate request volume.</li>
+              </ul>
+            </div>
+            <div style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-sans);">
+              Use the GCP Console, Cloud Logging, and the DB Inspector tabs to trace variables, regional routes, and SQL execution streams to formulate your fix patches.
             </div>
           </div>
-
-          <!-- LAB 2 -->
-          <div class="glass-card lab-card">
-            <div class="lab-meta">
-              <span class="lab-badge lab-medium">NETWORK DEV</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 30 mins</span>
-            </div>
-            <h3 class="lab-title">Challenge 2: Multi-Region Load Balancing & Anycast Routing</h3>
-            <p class="lab-desc">
-              By default, the application is deployed as a secure single-region service with a Global HTTPS Load Balancer (GCLB) in <code>us-central1</code>. To reduce network latency for European users, upgrade the baseline GCLB configuration by adding a second regional Cloud Run app service in <code>europe-west1</code>, declaring a European Serverless Network Endpoint Group (NEG), and registering it as an active-active backend.
-            </p>
-            <pre class="lab-code"><code># Add a second regional NEG for European users
-resource "google_compute_region_network_endpoint_group" "serverless_neg_europe" {
-  name                  = "hr-vacation-neg-europe"
-  network_endpoint_type = "SERVERLESS"
-  region                = "europe-west1"
-  cloud_run {
-    service = "hr-vacation-app-europe"
-  }
-}</code></pre>
-          </div>
-
-          <!-- LAB 3 -->
-          <div class="glass-card lab-card">
-            <div class="lab-meta">
-              <span class="lab-badge lab-hard">DEVOPS ENGINEER</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Duration: 45 mins</span>
-            </div>
-            <h3 class="lab-title">Challenge 3: AlloyDB Disaster Recovery & Regional Failover</h3>
-            <p class="lab-desc">
-              AlloyDB utilizes continuous storage-level log streaming to replicate transactions to secondary regional clusters with typical latency under 1 second. In this lab, simulate a catastrophic regional failure of <code>us-central1</code>. Follow the Disaster Recovery Runbook to promote the secondary cluster <code>europe-west1</code> to standalone primary, then update Cloud DNS records so running backends automatically reroute database queries without code modification or redeployments.
-            </p>
-            
-            <div class="form-group">
-              <label>DR Promotion Command Snippet</label>
-              <pre class="lab-code"><code># 1. Promote secondary cluster to primary read-write
-gcloud alloydb clusters promote-secondary hr-vacation-cluster-secondary \
-    --region=europe-west1
-
-# 2. Update DNS zone endpoints inside VPC
-gcloud dns record-sets transaction start --zone=hr-vacation-private-zone
-gcloud dns record-sets transaction remove --zone=hr-vacation-private-zone \
-    --name="write-db.hr-vacation.internal." --ttl=60 --type=A "[PRIMARY_OLD_IP]"
-gcloud dns record-sets transaction add --zone=hr-vacation-private-zone \
-    --name="write-db.hr-vacation.internal." --ttl=60 --type=A "[EUROPE_NEW_IP]"
-gcloud dns record-sets transaction execute --zone=hr-vacation-private-zone</code></pre>
-            </div>
-          </div>
-
-
-
-
         </div>
       </section>
 
